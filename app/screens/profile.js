@@ -15,37 +15,41 @@ import {
 import { apiRequest } from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// ── Design tokens (same as home.js) ───────────────────────────
+const C = {
+  bg:          "#F5F4F0",
+  surfaceAlt:  "#FFFFFF",
+  border:      "#E6E4DE",
+  borderLight: "#EEECE7",
+  ink:         "#1A1916",
+  inkMid:      "#6B6860",
+  inkLight:    "#A8A59E",
+  shadow:      "#1A1916",
+};
+
 export default function Profile({ navigation }) {
   const [isProfileCompleted, setIsProfileCompleted] = useState(false);
-  const [profileData, setProfileData]   = useState(null);
-  const [pageLoading, setPageLoading]   = useState(true);
+  const [profileData, setProfileData] = useState(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
-  // ── form state (shared between complete-profile & edit) ──
   const [businessName, setBusinessName] = useState("");
   const [shopAddress, setShopAddress]   = useState("");
   const [city, setCity]                 = useState("");
   const [state, setState]               = useState("");
   const [pincode, setPincode]           = useState("");
 
-  // ── edit modal ──
-  const [editVisible, setEditVisible]   = useState(false);
-  const [saving, setSaving]             = useState(false);
+  const [editVisible, setEditVisible] = useState(false);
+  const [saving, setSaving]           = useState(false);
 
-  // ─────────────────────────────────────────────────────────────
-  // Fetch profile on mount
-  // ─────────────────────────────────────────────────────────────
   const fetchProfile = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
       if (!token) return;
-
       const res = await apiRequest("/wholesaler/profile", "GET", null, token);
-
       if (res?.isProfileCompleted) {
         const p = res.profile;
         setProfileData(p);
         setIsProfileCompleted(true);
-        // pre-fill edit form with current values
         prefillForm(p);
       }
     } catch (error) {
@@ -65,9 +69,6 @@ export default function Profile({ navigation }) {
 
   useEffect(() => { fetchProfile(); }, []);
 
-  // ─────────────────────────────────────────────────────────────
-  // Complete profile (first time)
-  // ─────────────────────────────────────────────────────────────
   const handleCompleteProfile = async () => {
     if (!businessName || !shopAddress || !city || !state || !pincode) {
       alert("Please fill all details");
@@ -76,28 +77,21 @@ export default function Profile({ navigation }) {
     try {
       setSaving(true);
       const token = await AsyncStorage.getItem("token");
-      if (!token) { alert("Login expired. Please login again."); return; }
-
+      if (!token) { alert("Login expired."); return; }
       const res = await apiRequest(
-        "/wholesaler/complete-profile",
-        "PUT",
+        "/wholesaler/complete-profile", "PUT",
         { businessName, address: { shopAddress, city, state, pincode } },
         token
       );
-
       setProfileData(res);
       setIsProfileCompleted(true);
     } catch (error) {
-      console.log("PROFILE UPDATE ERROR 👉", error);
       alert(error.message || "Failed to update profile");
     } finally {
       setSaving(false);
     }
   };
 
-  // ─────────────────────────────────────────────────────────────
-  // Update profile (edit)
-  // ─────────────────────────────────────────────────────────────
   const handleUpdateProfile = async () => {
     if (!businessName || !shopAddress || !city || !state || !pincode) {
       alert("Please fill all details");
@@ -106,116 +100,107 @@ export default function Profile({ navigation }) {
     try {
       setSaving(true);
       const token = await AsyncStorage.getItem("token");
-      if (!token) { alert("Login expired. Please login again."); return; }
-
+      if (!token) { alert("Login expired."); return; }
       const res = await apiRequest(
-        "/wholesaler/update-profile",
-        "PUT",
+        "/wholesaler/update-profile", "PUT",
         { businessName, address: { shopAddress, city, state, pincode } },
         token
       );
-
-      // res.profile has the fresh data from DB
       const updated = res.profile;
       setProfileData(updated);
       prefillForm(updated);
       setEditVisible(false);
     } catch (error) {
-      console.log("PROFILE EDIT ERROR 👉", error);
       alert(error.message || "Failed to save changes");
     } finally {
       setSaving(false);
     }
   };
 
-  // ─────────────────────────────────────────────────────────────
-  // Bottom tab bar
-  // ─────────────────────────────────────────────────────────────
-  const BottomTabBar = () => (
-    <View style={styles.tabBar}>
+  // ── Bottom nav (matches home.js) ──────────────────────────────
+  const BottomNav = () => (
+    <View style={s.nav}>
       <TouchableOpacity
-        style={styles.tabItem}
+        style={s.navItem}
         onPress={() => navigation.navigate("home")}
         activeOpacity={0.7}
       >
-        <Text style={styles.tabIcon}>🏠</Text>
-        <Text style={styles.tabLabel}>Home</Text>
+        <Text style={s.navIcon}>⌂</Text>
+        <Text style={s.navLabel}>Home</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.addTab}
+        style={s.navAdd}
         onPress={() => navigation.navigate("addProduct")}
         activeOpacity={0.85}
       >
-        <Text style={styles.addTabIcon}>＋</Text>
+        <Text style={s.navAddIcon}>+</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.tabItem} activeOpacity={0.7}>
-        <Text style={[styles.tabIcon, styles.tabIconActive]}>👤</Text>
-        <Text style={[styles.tabLabel, styles.tabLabelActive]}>Profile</Text>
+      <TouchableOpacity style={s.navItem} activeOpacity={0.7}>
+        <Text style={[s.navIcon, s.navIconActive]}>◎</Text>
+        <Text style={[s.navLabel, s.navLabelActive]}>Profile</Text>
       </TouchableOpacity>
     </View>
   );
 
-  // ─────────────────────────────────────────────────────────────
-  // Loading
-  // ─────────────────────────────────────────────────────────────
+  // ── Loading ───────────────────────────────────────────────────
   if (pageLoading) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <ActivityIndicator style={{ flex: 1 }} size="large" color="#111" />
+      <SafeAreaView style={s.safe}>
+        <ActivityIndicator style={{ flex: 1 }} size="large" color={C.ink} />
       </SafeAreaView>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // PROFILE VIEW (completed)
-  // ─────────────────────────────────────────────────────────────
+  // ── PROFILE VIEW ─────────────────────────────────────────────
   if (isProfileCompleted && profileData) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.container}>
+      <SafeAreaView style={s.safe}>
+        <View style={s.container}>
 
           {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerRow}>
-              <View>
-                <Text style={styles.headerTitle}>My Profile</Text>
-                <Text style={styles.headerSub}>Business details</Text>
-              </View>
-              {/* ✏️ Edit button */}
+          <View style={s.header}>
+            <View style={s.headerTop}>
+              <Text style={s.wordmark}>PROFILE</Text>
               <TouchableOpacity
-                style={styles.editBtn}
-                onPress={() => {
-                  prefillForm(profileData); // always fresh values
-                  setEditVisible(true);
-                }}
-                activeOpacity={0.8}
+                style={s.editChip}
+                onPress={() => { prefillForm(profileData); setEditVisible(true); }}
+                activeOpacity={0.75}
               >
-                <Text style={styles.editBtnIcon}>✏️</Text>
-                <Text style={styles.editBtnText}>Edit</Text>
+                <Text style={s.editChipText}>Edit</Text>
               </TouchableOpacity>
             </View>
+            <Text style={s.headerName}>{profileData.businessName}</Text>
           </View>
 
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            <View style={styles.card}>
-              <Row label="Business Name" value={profileData.businessName} />
-              <View style={styles.divider} />
-              <Row label="Shop Address"  value={profileData?.address?.shopAddress} />
-              <View style={styles.divider} />
-              <Row label="City"          value={profileData?.address?.city} />
-              <View style={styles.divider} />
-              <Row label="State"         value={profileData?.address?.state} />
-              <View style={styles.divider} />
-              <Row label="Pincode"       value={profileData?.address?.pincode} />
+          <ScrollView
+            contentContainerStyle={s.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Address card */}
+            <Text style={s.sectionLabel}>BUSINESS ADDRESS</Text>
+            <View style={s.card}>
+              <Field label="SHOP ADDRESS" value={profileData?.address?.shopAddress} />
+              <Divider />
+              <View style={s.fieldRow}>
+                <View style={{ flex: 1 }}>
+                  <Field label="CITY" value={profileData?.address?.city} />
+                </View>
+                <View style={s.fieldSep} />
+                <View style={{ flex: 1 }}>
+                  <Field label="STATE" value={profileData?.address?.state} />
+                </View>
+              </View>
+              <Divider />
+              <Field label="PINCODE" value={profileData?.address?.pincode} />
             </View>
           </ScrollView>
         </View>
 
-        <BottomTabBar />
+        <BottomNav />
 
-        {/* ── EDIT MODAL ── */}
+        {/* Edit modal */}
         <Modal
           visible={editVisible}
           animationType="slide"
@@ -223,82 +208,88 @@ export default function Profile({ navigation }) {
           onRequestClose={() => setEditVisible(false)}
         >
           <KeyboardAvoidingView
-            style={styles.modalOverlay}
+            style={s.modalOverlay}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
           >
-            <View style={styles.modalSheet}>
-              {/* Modal Header */}
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Edit Profile</Text>
+            <View style={s.modalSheet}>
+              <View style={s.modalHandle} />
+              <View style={s.modalHead}>
+                <Text style={s.modalTitle}>Edit Profile</Text>
                 <TouchableOpacity
+                  style={s.modalClose}
                   onPress={() => setEditVisible(false)}
-                  style={styles.closeBtn}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.closeBtnText}>✕</Text>
+                  <Text style={s.modalCloseText}>✕</Text>
                 </TouchableOpacity>
               </View>
 
               <ScrollView
-                contentContainerStyle={styles.modalScroll}
+                contentContainerStyle={s.modalBody}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
-                <Text style={styles.inputLabel}>Business Name</Text>
+                <Text style={s.fieldLabel}>BUSINESS NAME</Text>
                 <TextInput
-                  style={styles.input}
+                  style={s.input}
                   placeholder="Business Name"
-                  placeholderTextColor="#aaa"
+                  placeholderTextColor={C.inkLight}
                   value={businessName}
                   onChangeText={setBusinessName}
                 />
 
-                <Text style={styles.inputLabel}>Shop Address</Text>
+                <Text style={s.fieldLabel}>SHOP ADDRESS</Text>
                 <TextInput
-                  style={styles.input}
+                  style={s.input}
                   placeholder="Shop Address"
-                  placeholderTextColor="#aaa"
+                  placeholderTextColor={C.inkLight}
                   value={shopAddress}
                   onChangeText={setShopAddress}
                 />
 
-                <Text style={styles.inputLabel}>City</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="City"
-                  placeholderTextColor="#aaa"
-                  value={city}
-                  onChangeText={setCity}
-                />
+                <View style={s.inputRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.fieldLabel}>CITY</Text>
+                    <TextInput
+                      style={s.input}
+                      placeholder="City"
+                      placeholderTextColor={C.inkLight}
+                      value={city}
+                      onChangeText={setCity}
+                    />
+                  </View>
+                  <View style={{ width: 12 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.fieldLabel}>STATE</Text>
+                    <TextInput
+                      style={s.input}
+                      placeholder="State"
+                      placeholderTextColor={C.inkLight}
+                      value={state}
+                      onChangeText={setState}
+                    />
+                  </View>
+                </View>
 
-                <Text style={styles.inputLabel}>State</Text>
+                <Text style={s.fieldLabel}>PINCODE</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="State"
-                  placeholderTextColor="#aaa"
-                  value={state}
-                  onChangeText={setState}
-                />
-
-                <Text style={styles.inputLabel}>Pincode</Text>
-                <TextInput
-                  style={styles.input}
+                  style={s.input}
                   placeholder="Pincode"
-                  placeholderTextColor="#aaa"
+                  placeholderTextColor={C.inkLight}
                   keyboardType="number-pad"
                   value={pincode}
                   onChangeText={setPincode}
                 />
 
                 <TouchableOpacity
-                  style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+                  style={[s.saveBtn, saving && { opacity: 0.5 }]}
                   onPress={handleUpdateProfile}
                   activeOpacity={0.85}
                   disabled={saving}
                 >
                   {saving
                     ? <ActivityIndicator color="#fff" />
-                    : <Text style={styles.saveBtnText}>Save Changes</Text>
+                    : <Text style={s.saveBtnText}>Save Changes</Text>
                   }
                 </TouchableOpacity>
               </ScrollView>
@@ -309,290 +300,354 @@ export default function Profile({ navigation }) {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // PROFILE FORM (first time setup)
-  // ─────────────────────────────────────────────────────────────
+  // ── FIRST TIME SETUP FORM ─────────────────────────────────────
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Complete Profile</Text>
-          <Text style={styles.headerSub}>Fill in your business details</Text>
+    <SafeAreaView style={s.safe}>
+      <View style={s.container}>
+        <View style={s.header}>
+          <View style={s.headerTop}>
+            <Text style={s.wordmark}>PROFILE</Text>
+          </View>
+          <Text style={s.headerName}>Complete your profile</Text>
+          <Text style={s.headerSub}>Add your business details to get started</Text>
         </View>
 
         <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          contentContainerStyle={[s.scrollContent, { paddingBottom: 110 }]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.inputLabel}>Business Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Business Name"
-            placeholderTextColor="#aaa"
-            value={businessName}
-            onChangeText={setBusinessName}
-          />
+          <Text style={s.sectionLabel}>BUSINESS INFO</Text>
+          <View style={s.card}>
+            <Text style={s.fieldLabel}>BUSINESS NAME</Text>
+            <TextInput
+              style={s.inputInCard}
+              placeholder="e.g. Sharma Traders"
+              placeholderTextColor={C.inkLight}
+              value={businessName}
+              onChangeText={setBusinessName}
+            />
+          </View>
 
-          <Text style={styles.inputLabel}>Shop Address</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Shop Address"
-            placeholderTextColor="#aaa"
-            value={shopAddress}
-            onChangeText={setShopAddress}
-          />
+          <Text style={[s.sectionLabel, { marginTop: 24 }]}>ADDRESS</Text>
+          <View style={s.card}>
+            <Text style={s.fieldLabel}>SHOP ADDRESS</Text>
+            <TextInput
+              style={s.inputInCard}
+              placeholder="Street / Area"
+              placeholderTextColor={C.inkLight}
+              value={shopAddress}
+              onChangeText={setShopAddress}
+            />
+            <Divider />
 
-          <Text style={styles.inputLabel}>City</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="City"
-            placeholderTextColor="#aaa"
-            value={city}
-            onChangeText={setCity}
-          />
+            <View style={s.inputRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.fieldLabel}>CITY</Text>
+                <TextInput
+                  style={s.inputInCard}
+                  placeholder="City"
+                  placeholderTextColor={C.inkLight}
+                  value={city}
+                  onChangeText={setCity}
+                />
+              </View>
+              <View style={{ width: 20 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.fieldLabel}>STATE</Text>
+                <TextInput
+                  style={s.inputInCard}
+                  placeholder="State"
+                  placeholderTextColor={C.inkLight}
+                  value={state}
+                  onChangeText={setState}
+                />
+              </View>
+            </View>
+            <Divider />
 
-          <Text style={styles.inputLabel}>State</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="State"
-            placeholderTextColor="#aaa"
-            value={state}
-            onChangeText={setState}
-          />
-
-          <Text style={styles.inputLabel}>Pincode</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Pincode"
-            placeholderTextColor="#aaa"
-            keyboardType="number-pad"
-            value={pincode}
-            onChangeText={setPincode}
-          />
+            <Text style={s.fieldLabel}>PINCODE</Text>
+            <TextInput
+              style={s.inputInCard}
+              placeholder="6-digit pincode"
+              placeholderTextColor={C.inkLight}
+              keyboardType="number-pad"
+              value={pincode}
+              onChangeText={setPincode}
+            />
+          </View>
 
           <TouchableOpacity
-            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+            style={[s.saveBtn, { marginTop: 28 }, saving && { opacity: 0.5 }]}
             onPress={handleCompleteProfile}
             activeOpacity={0.85}
             disabled={saving}
           >
             {saving
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.saveBtnText}>Save Details</Text>
+              : <Text style={s.saveBtnText}>Save Details</Text>
             }
           </TouchableOpacity>
         </ScrollView>
       </View>
 
-      <BottomTabBar />
+      <BottomNav />
     </SafeAreaView>
   );
 }
 
-// ── Small helper component ──
-const Row = ({ label, value }) => (
-  <View>
-    <Text style={styles.label}>{label}</Text>
-    <Text style={styles.value}>{value || "-"}</Text>
+// ── Helper sub-components ─────────────────────────────────────
+const Field = ({ label, value }) => (
+  <View style={{ paddingVertical: 2 }}>
+    <Text style={fieldS.label}>{label}</Text>
+    <Text style={fieldS.value}>{value || "—"}</Text>
   </View>
 );
 
-const TAB_HEIGHT = 70;
+const Divider = () => <View style={fieldS.divider} />;
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F7F7F5" },
-  container: { flex: 1, paddingBottom: TAB_HEIGHT },
+const fieldS = StyleSheet.create({
+  label: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: C.inkLight,
+    letterSpacing: 1.2,
+    marginBottom: 4,
+    marginTop: 2,
+  },
+  value: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: C.ink,
+    letterSpacing: -0.1,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: C.borderLight,
+    marginVertical: 14,
+  },
+});
+
+const NAV_H = 72;
+
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.bg },
+  container: { flex: 1, paddingBottom: NAV_H },
 
   // ── HEADER ──
   header: {
+    backgroundColor: C.surfaceAlt,
     paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 16,
+    paddingTop: 28,
+    paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#E8E8E4",
-    backgroundColor: "#fff",
+    borderBottomColor: C.border,
   },
-  headerRow: {
+  headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 10,
   },
-  headerTitle: {
-    fontSize: 26,
+  wordmark: {
+    fontSize: 11,
     fontWeight: "800",
-    color: "#111",
-    letterSpacing: -0.5,
+    letterSpacing: 3,
+    color: C.inkLight,
+  },
+  headerName: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: C.ink,
+    letterSpacing: -0.4,
   },
   headerSub: {
     fontSize: 13,
-    color: "#999",
-    marginTop: 2,
-    letterSpacing: 0.3,
+    color: C.inkMid,
+    marginTop: 3,
   },
 
-  // ✏️ Edit button
-  editBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "#F3F3F0",
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+  // edit chip
+  editChip: {
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    backgroundColor: C.bg,
   },
-  editBtnIcon: { fontSize: 14 },
-  editBtnText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#111",
+  editChipText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: C.inkMid,
+    letterSpacing: 0.3,
   },
 
   scrollContent: { padding: 20 },
 
-  // ── PROFILE CARD ──
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#ECECEC",
-  },
-  label: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 4,
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-  },
-  value: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111",
-    marginTop: 4,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "#F0F0EE",
-    marginVertical: 12,
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: C.inkLight,
+    letterSpacing: 1.5,
+    marginBottom: 10,
+    marginLeft: 2,
   },
 
-  // ── INPUTS ──
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#555",
-    marginBottom: 6,
-    marginTop: 4,
-    letterSpacing: 0.3,
-    textTransform: "uppercase",
-  },
-  input: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#E0E0DC",
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 14,
-    fontSize: 15,
-    color: "#111",
-  },
-  saveBtn: {
-    backgroundColor: "#111",
-    padding: 16,
+  // ── CARD ──
+  card: {
+    backgroundColor: C.surfaceAlt,
     borderRadius: 12,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: C.border,
+    shadowColor: C.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+
+  fieldRow: { flexDirection: "row" },
+  fieldSep: { width: 1, backgroundColor: C.borderLight, marginHorizontal: 16 },
+
+  // ── FIELD LABEL (in modal / setup form) ──
+  fieldLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: C.inkLight,
+    letterSpacing: 1.2,
+    marginBottom: 7,
     marginTop: 4,
+  },
+
+  // ── INPUTS (modal) ──
+  input: {
+    backgroundColor: C.bg,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    marginBottom: 16,
+    fontSize: 14,
+    color: C.ink,
+  },
+  // inputs inside white card (setup form)
+  inputInCard: {
+    fontSize: 14,
+    color: C.ink,
+    paddingVertical: 6,
+    paddingHorizontal: 0,
+    marginBottom: 4,
+    borderBottomWidth: 0,
+  },
+  inputRow: { flexDirection: "row" },
+
+  saveBtn: {
+    backgroundColor: C.ink,
+    paddingVertical: 15,
+    borderRadius: 10,
     alignItems: "center",
   },
-  saveBtnDisabled: { opacity: 0.5 },
   saveBtnText: {
     color: "#fff",
     fontWeight: "700",
-    fontSize: 15,
-    letterSpacing: 0.2,
+    fontSize: 14,
+    letterSpacing: 0.5,
   },
 
-  // ── EDIT MODAL ──
+  // ── MODAL ──
   modalOverlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: "rgba(26,25,22,0.4)",
   },
   modalSheet: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: "90%",
+    backgroundColor: C.surfaceAlt,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "92%",
   },
-  modalHeader: {
+  modalHandle: {
+    width: 36,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: C.border,
+    alignSelf: "center",
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  modalHead: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0EE",
+    borderBottomColor: C.borderLight,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "800",
-    color: "#111",
-    letterSpacing: -0.3,
+    color: C.ink,
+    letterSpacing: -0.2,
   },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#F0F0EE",
+  modalClose: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: C.bg,
+    borderWidth: 1,
+    borderColor: C.border,
     justifyContent: "center",
     alignItems: "center",
   },
-  closeBtnText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#555",
-  },
-  modalScroll: {
-    padding: 24,
-    paddingBottom: 40,
-  },
+  modalCloseText: { fontSize: 11, fontWeight: "700", color: C.inkMid },
+  modalBody: { padding: 24, paddingBottom: 44 },
 
-  // ── BOTTOM TAB BAR ──
-  tabBar: {
+  // ── BOTTOM NAV ──
+  nav: {
     position: "absolute",
     bottom: 0, left: 0, right: 0,
-    height: TAB_HEIGHT,
-    backgroundColor: "#fff",
+    height: NAV_H,
+    backgroundColor: C.surfaceAlt,
     borderTopWidth: 1,
-    borderTopColor: "#E8E8E4",
+    borderTopColor: C.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    paddingBottom: 8,
-    paddingHorizontal: 16,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
   },
-  tabItem: {
+  navItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    gap: 4,
     paddingTop: 6,
   },
-  tabIcon: { fontSize: 22, opacity: 0.4 },
-  tabIconActive: { opacity: 1 },
-  tabLabel: { fontSize: 11, color: "#aaa", marginTop: 2, fontWeight: "500" },
-  tabLabelActive: { color: "#111", fontWeight: "700" },
-  addTab: {
-    width: 56, height: 56,
-    borderRadius: 28,
-    backgroundColor: "#111",
+  navIcon: {
+    fontSize: 16,
+    color: C.inkMid,
+    marginBottom: 1,
+  },
+  navIconActive: { color: C.ink },
+  navLabel: { fontSize: 11, color: C.inkLight, fontWeight: "500", letterSpacing: 0.3 },
+  navLabelActive: { color: C.ink, fontWeight: "700" },
+  navAdd: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: C.ink,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
-    shadowColor: "#000",
+    marginBottom: 10,
+    shadowColor: C.shadow,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
     elevation: 6,
   },
-  addTabIcon: { color: "#fff", fontSize: 28, lineHeight: 32, fontWeight: "300" },
+  navAddIcon: { color: "#fff", fontSize: 26, lineHeight: 30, fontWeight: "300" },
 });

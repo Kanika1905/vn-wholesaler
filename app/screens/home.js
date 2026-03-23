@@ -17,14 +17,29 @@ import { useFocusEffect } from "@react-navigation/native";
 import { apiRequest } from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// ── Design tokens ──────────────────────────────────────────────
+const C = {
+  bg:          "#F5F4F0",   // warm off-white canvas
+  surface:     "#FAFAF8",   // card surface
+  surfaceAlt:  "#FFFFFF",
+  border:      "#E6E4DE",   // warm grey border
+  borderLight: "#EEECE7",
+  ink:         "#1A1916",   // near-black text
+  inkMid:      "#6B6860",   // secondary text
+  inkLight:    "#A8A59E",   // tertiary / metadata
+  accent:      "#1A1916",   // same as ink — monochrome accent
+  shadow:      "#1A1916",
+};
+
 export default function Home({ navigation }) {
   const [activeTab, setActiveTab] = useState("store");
   const [isProfileCompleted, setIsProfileCompleted] = useState(false);
+  const [businessName, setBusinessName] = useState("");
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ── edit modal state ──
+  // edit modal
   const [editVisible, setEditVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [editName, setEditName] = useState("");
@@ -41,7 +56,12 @@ export default function Home({ navigation }) {
       if (!token) return;
 
       const profileRes = await apiRequest("/wholesaler/profile", "GET", null, token);
-      if (profileRes?.isProfileCompleted) setIsProfileCompleted(true);
+      if (profileRes?.isProfileCompleted) {
+        setIsProfileCompleted(true);
+        if (profileRes?.profile?.businessName) {
+          setBusinessName(profileRes.profile.businessName);
+        }
+      }
 
       const productsRes = await apiRequest("/wholesaler/products", "GET", null, token);
       if (Array.isArray(productsRes)) setProducts(productsRes);
@@ -57,7 +77,6 @@ export default function Home({ navigation }) {
 
   useFocusEffect(fetchHomeData);
 
-  // ── open edit modal pre-filled ──
   const openEdit = (product) => {
     setEditingProduct(product);
     setEditName(product.name || "");
@@ -68,7 +87,6 @@ export default function Home({ navigation }) {
     setEditVisible(true);
   };
 
-  // ── save edited product ──
   const handleSaveProduct = async () => {
     if (!editName || !editPrice || !editQuantity || !editUnit) {
       alert("Please fill all required fields");
@@ -77,7 +95,7 @@ export default function Home({ navigation }) {
     try {
       setSaving(true);
       const token = await AsyncStorage.getItem("token");
-      if (!token) { alert("Login expired. Please login again."); return; }
+      if (!token) { alert("Login expired."); return; }
 
       const res = await apiRequest(
         `/wholesaler/products/${editingProduct._id}`,
@@ -92,11 +110,13 @@ export default function Home({ navigation }) {
         token
       );
 
-      // update local state directly — no full refetch needed
       const updated = res.product || res;
-      setProducts((prev) =>
-        prev.map((p) => (p._id === updated._id ? updated : p))
-      );
+      if (!updated || !updated._id) {
+        await fetchHomeData();
+        setEditVisible(false);
+        return;
+      }
+      setProducts((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
       setEditVisible(false);
     } catch (error) {
       console.log("EDIT PRODUCT ERROR 👉", error);
@@ -106,69 +126,64 @@ export default function Home({ navigation }) {
     }
   };
 
+  const statusStyle = (status) => {
+    switch (status?.toLowerCase()) {
+      case "pending":   return { dot: "#C9943A", label: "Pending" };
+      case "confirmed": return { dot: "#4A7C6F", label: "Confirmed" };
+      case "delivered": return { dot: "#3A6B3A", label: "Delivered" };
+      case "cancelled": return { dot: "#8B3A3A", label: "Cancelled" };
+      default:          return { dot: C.inkLight, label: status || "Pending" };
+    }
+  };
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <ActivityIndicator style={{ flex: 1 }} size="large" color="#111" />
+      <SafeAreaView style={s.safe}>
+        <ActivityIndicator style={{ flex: 1 }} size="large" color={C.ink} />
       </SafeAreaView>
     );
   }
 
-  const statusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case "pending":   return "#F59E0B";
-      case "confirmed": return "#3B82F6";
-      case "delivered": return "#10B981";
-      case "cancelled": return "#EF4444";
-      default:          return "#999";
-    }
-  };
-  const statusBg = (status) => {
-    switch (status?.toLowerCase()) {
-      case "pending":   return "#FEF3C7";
-      case "confirmed": return "#DBEAFE";
-      case "delivered": return "#D1FAE5";
-      case "cancelled": return "#FEE2E2";
-      default:          return "#F3F4F6";
-    }
-  };
-
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+    <SafeAreaView style={s.safe}>
+      <View style={s.container}>
 
         {/* ── HEADER ── */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>My Store</Text>
-          <View style={styles.tabSwitcher}>
+        <View style={s.header}>
+          <View style={s.headerTop}>
+            <Text style={s.wordmark} numberOfLines={1}>
+              {businessName ? businessName.toUpperCase() : "MY STORE"}
+            </Text>
+            <Text style={s.headerMeta}>
+              {activeTab === "store"
+                ? `${products.length} item${products.length !== 1 ? "s" : ""}`
+                : `${orders.length} order${orders.length !== 1 ? "s" : ""}`}
+            </Text>
+          </View>
+
+          {/* Tab pills */}
+          <View style={s.tabRow}>
             <TouchableOpacity
-              style={[styles.switchTab, activeTab === "store" && styles.switchTabActive]}
+              style={[s.tabPill, activeTab === "store" && s.tabPillActive]}
               onPress={() => setActiveTab("store")}
-              activeOpacity={0.8}
+              activeOpacity={0.75}
             >
-              <Text style={[styles.switchTabText, activeTab === "store" && styles.switchTabTextActive]}>
+              <Text style={[s.tabPillText, activeTab === "store" && s.tabPillTextActive]}>
                 Products
               </Text>
-              {products.length > 0 && (
-                <View style={[styles.badge, activeTab === "store" && styles.badgeActive]}>
-                  <Text style={[styles.badgeText, activeTab === "store" && styles.badgeTextActive]}>
-                    {products.length}
-                  </Text>
-                </View>
-              )}
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.switchTab, activeTab === "orders" && styles.switchTabActive]}
+              style={[s.tabPill, activeTab === "orders" && s.tabPillActive]}
               onPress={() => setActiveTab("orders")}
-              activeOpacity={0.8}
+              activeOpacity={0.75}
             >
-              <Text style={[styles.switchTabText, activeTab === "orders" && styles.switchTabTextActive]}>
-                My Orders
+              <Text style={[s.tabPillText, activeTab === "orders" && s.tabPillTextActive]}>
+                Orders
               </Text>
               {orders.length > 0 && (
-                <View style={[styles.badge, activeTab === "orders" && styles.badgeActive]}>
-                  <Text style={[styles.badgeText, activeTab === "orders" && styles.badgeTextActive]}>
+                <View style={[s.tabBadge, activeTab === "orders" && s.tabBadgeActive]}>
+                  <Text style={[s.tabBadgeText, activeTab === "orders" && s.tabBadgeTextActive]}>
                     {orders.length}
                   </Text>
                 </View>
@@ -180,63 +195,56 @@ export default function Home({ navigation }) {
         {/* ── PRODUCTS TAB ── */}
         {activeTab === "store" && (
           products.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIconWrap}>
-                <Text style={styles.emptyIcon}>🏪</Text>
-              </View>
-              <Text style={styles.emptyTitle}>No products yet</Text>
-              {!isProfileCompleted ? (
-                <>
-                  <Text style={styles.emptyDesc}>
-                    Set up your profile first, then start adding products to your store.
-                  </Text>
+            <View style={s.emptyWrap}>
+              <View style={s.emptyBox}>
+                <Text style={s.emptyGlyph}>—</Text>
+                <Text style={s.emptyTitle}>No products yet</Text>
+                <Text style={s.emptyDesc}>
+                  {!isProfileCompleted
+                    ? "Complete your profile to start listing products."
+                    : "Tap + below to add your first product."}
+                </Text>
+                {!isProfileCompleted && (
                   <TouchableOpacity
-                    style={styles.setupBtn}
+                    style={s.emptyBtn}
                     onPress={() => navigation.navigate("profile")}
                     activeOpacity={0.85}
                   >
-                    <Text style={styles.setupBtnText}>Set Up Your Profile →</Text>
+                    <Text style={s.emptyBtnText}>Set up profile</Text>
                   </TouchableOpacity>
-                </>
-              ) : (
-                <Text style={styles.emptyDesc}>
-                  Tap the + button below to add your first product.
-                </Text>
-              )}
+                )}
+              </View>
             </View>
           ) : (
             <FlatList
               data={products}
               keyExtractor={(item) => item._id}
-              contentContainerStyle={styles.list}
+              contentContainerStyle={s.list}
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
-                <View style={styles.productCard}>
-                  {/* ✏️ Edit button — top right corner */}
-                  <TouchableOpacity
-                    style={styles.cardEditBtn}
-                    onPress={() => openEdit(item)}
-                    activeOpacity={0.7}
-                    hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                  >
-                    <Text style={styles.cardEditIcon}>✏️</Text>
-                  </TouchableOpacity>
+                <View style={s.productCard}>
+                  {/* top row: name + edit */}
+                  <View style={s.productCardTop}>
+                    <Text style={s.productName} numberOfLines={1}>{item.name}</Text>
+                    <TouchableOpacity
+                      style={s.editChip}
+                      onPress={() => openEdit(item)}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                    >
+                      <Text style={s.editChipText}>Edit</Text>
+                    </TouchableOpacity>
+                  </View>
 
-                  <View style={styles.cardBody}>
-                    <View style={styles.cardLeft}>
-                      <Text style={styles.productName}>{item.name}</Text>
-                      {item.description ? (
-                        <Text style={styles.productDesc} numberOfLines={1}>
-                          {item.description}
-                        </Text>
-                      ) : null}
-                      <Text style={styles.productMeta}>
-                        {item.quantity} {item.unit}
-                      </Text>
-                    </View>
-                    <View style={styles.cardRight}>
-                      <Text style={styles.productPrice}>₹{item.price}</Text>
-                    </View>
+                  {/* description */}
+                  {item.description ? (
+                    <Text style={s.productDesc} numberOfLines={1}>{item.description}</Text>
+                  ) : null}
+
+                  {/* bottom row: qty + price */}
+                  <View style={s.productCardBottom}>
+                    <Text style={s.productQty}>{item.quantity} {item.unit}</Text>
+                    <Text style={s.productPrice}>₹{item.price}</Text>
                   </View>
                 </View>
               )}
@@ -247,88 +255,92 @@ export default function Home({ navigation }) {
         {/* ── ORDERS TAB ── */}
         {activeTab === "orders" && (
           orders.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIconWrap}>
-                <Text style={styles.emptyIcon}>📦</Text>
+            <View style={s.emptyWrap}>
+              <View style={s.emptyBox}>
+                <Text style={s.emptyGlyph}>—</Text>
+                <Text style={s.emptyTitle}>No orders yet</Text>
+                <Text style={s.emptyDesc}>Buyer orders will appear here.</Text>
               </View>
-              <Text style={styles.emptyTitle}>No orders yet</Text>
-              <Text style={styles.emptyDesc}>
-                Orders placed by buyers will appear here.
-              </Text>
             </View>
           ) : (
             <FlatList
               data={orders}
               keyExtractor={(item) => item._id}
-              contentContainerStyle={styles.list}
+              contentContainerStyle={s.list}
               showsVerticalScrollIndicator={false}
-              renderItem={({ item }) => (
-                <View style={styles.orderCard}>
-                  <View style={styles.orderTop}>
-                    <View style={styles.orderLeft}>
-                      <Text style={styles.orderId}>
-                        Order #{item._id?.slice(-6).toUpperCase()}
-                      </Text>
-                      <Text style={styles.orderBuyer}>
-                        {item.buyerName || "Buyer"}
-                      </Text>
+              renderItem={({ item }) => {
+                const st = statusStyle(item.status);
+                return (
+                  <View style={s.orderCard}>
+                    {/* top: id + status */}
+                    <View style={s.orderCardTop}>
+                      <Text style={s.orderId}>#{item._id?.slice(-6).toUpperCase()}</Text>
+                      <View style={s.statusRow}>
+                        <View style={[s.statusDot, { backgroundColor: st.dot }]} />
+                        <Text style={s.statusLabel}>{st.label}</Text>
+                      </View>
                     </View>
-                    <View style={[styles.statusPill, { backgroundColor: statusBg(item.status) }]}>
-                      <Text style={[styles.statusText, { color: statusColor(item.status) }]}>
-                        {item.status || "Pending"}
+
+                    {/* buyer */}
+                    <Text style={s.orderBuyer}>{item.buyerName || "Buyer"}</Text>
+
+                    {/* items */}
+                    {Array.isArray(item.items) && item.items.length > 0 && (
+                      <View style={s.orderItemsWrap}>
+                        {item.items.map((p, idx) => (
+                          <Text key={idx} style={s.orderItemRow}>
+                            {p.name}
+                            <Text style={s.orderItemQty}>  ×{p.quantity}</Text>
+                          </Text>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* footer: date + total */}
+                    <View style={s.orderFooter}>
+                      <Text style={s.orderDate}>
+                        {item.createdAt
+                          ? new Date(item.createdAt).toLocaleDateString("en-IN", {
+                              day: "numeric", month: "short", year: "numeric",
+                            })
+                          : ""}
                       </Text>
+                      <Text style={s.orderTotal}>₹{item.totalAmount}</Text>
                     </View>
                   </View>
-                  {Array.isArray(item.items) && item.items.length > 0 && (
-                    <View style={styles.orderItems}>
-                      {item.items.map((p, idx) => (
-                        <Text key={idx} style={styles.orderItemText}>
-                          • {p.name}  ×{p.quantity}
-                        </Text>
-                      ))}
-                    </View>
-                  )}
-                  <View style={styles.orderBottom}>
-                    <Text style={styles.orderDate}>
-                      {item.createdAt
-                        ? new Date(item.createdAt).toLocaleDateString("en-IN", {
-                            day: "numeric", month: "short", year: "numeric",
-                          })
-                        : ""}
-                    </Text>
-                    <Text style={styles.orderTotal}>₹{item.totalAmount}</Text>
-                  </View>
-                </View>
-              )}
+                );
+              }}
             />
           )
         )}
       </View>
 
-      {/* ── BOTTOM TAB BAR ── */}
-      <View style={styles.bottomTabBar}>
-        <TouchableOpacity style={styles.bottomTabItem} activeOpacity={0.7}>
-          <Text style={[styles.bottomTabIcon, styles.bottomTabIconActive]}>🏠</Text>
-          <Text style={[styles.bottomTabLabel, styles.bottomTabLabelActive]}>Home</Text>
+      {/* ── BOTTOM NAV ── */}
+      <View style={s.nav}>
+        <TouchableOpacity style={s.navItem} activeOpacity={0.7}>
+          <Text style={[s.navIcon, s.navIconActive]}>⌂</Text>
+          <Text style={[s.navLabel, s.navLabelActive]}>Home</Text>
         </TouchableOpacity>
+
         <TouchableOpacity
-          style={styles.addTab}
+          style={s.navAdd}
           onPress={() => navigation.navigate("addProduct")}
           activeOpacity={0.85}
         >
-          <Text style={styles.addTabIcon}>＋</Text>
+          <Text style={s.navAddIcon}>+</Text>
         </TouchableOpacity>
+
         <TouchableOpacity
-          style={styles.bottomTabItem}
+          style={s.navItem}
           onPress={() => navigation.navigate("profile")}
           activeOpacity={0.7}
         >
-          <Text style={styles.bottomTabIcon}>👤</Text>
-          <Text style={styles.bottomTabLabel}>Profile</Text>
+          <Text style={s.navIcon}>◎</Text>
+          <Text style={s.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
 
-      {/* ── EDIT PRODUCT MODAL ── */}
+      {/* ── EDIT MODAL ── */}
       <Modal
         visible={editVisible}
         animationType="slide"
@@ -336,64 +348,67 @@ export default function Home({ navigation }) {
         onRequestClose={() => setEditVisible(false)}
       >
         <KeyboardAvoidingView
-          style={styles.modalOverlay}
+          style={s.modalOverlay}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Product</Text>
+          <View style={s.modalSheet}>
+            <View style={s.modalHandle} />
+
+            <View style={s.modalHead}>
+              <Text style={s.modalTitle}>Edit Product</Text>
               <TouchableOpacity
+                style={s.modalClose}
                 onPress={() => setEditVisible(false)}
-                style={styles.closeBtn}
                 activeOpacity={0.7}
               >
-                <Text style={styles.closeBtnText}>✕</Text>
+                <Text style={s.modalCloseText}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView
-              contentContainerStyle={styles.modalScroll}
+              contentContainerStyle={s.modalBody}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <Text style={styles.inputLabel}>Product Name *</Text>
+              <Text style={s.fieldLabel}>PRODUCT NAME</Text>
               <TextInput
-                style={styles.input}
-                placeholder="Product Name"
-                placeholderTextColor="#aaa"
+                style={s.field}
+                placeholder="Name"
+                placeholderTextColor={C.inkLight}
                 value={editName}
                 onChangeText={setEditName}
               />
 
-              <Text style={styles.inputLabel}>Description</Text>
+              <Text style={s.fieldLabel}>DESCRIPTION</Text>
               <TextInput
-                style={[styles.input, styles.inputMultiline]}
-                placeholder="Description (optional)"
-                placeholderTextColor="#aaa"
+                style={[s.field, s.fieldArea]}
+                placeholder="Optional"
+                placeholderTextColor={C.inkLight}
                 value={editDescription}
                 onChangeText={setEditDescription}
                 multiline
                 numberOfLines={3}
               />
 
-              <View style={styles.inputRow}>
-                <View style={styles.inputHalf}>
-                  <Text style={styles.inputLabel}>Price (₹) *</Text>
+              <View style={s.fieldRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>PRICE (₹)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={s.field}
                     placeholder="0"
-                    placeholderTextColor="#aaa"
+                    placeholderTextColor={C.inkLight}
                     value={editPrice}
                     onChangeText={setEditPrice}
                     keyboardType="numeric"
                   />
                 </View>
-                <View style={styles.inputHalf}>
-                  <Text style={styles.inputLabel}>Quantity *</Text>
+                <View style={{ width: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>QUANTITY</Text>
                   <TextInput
-                    style={styles.input}
+                    style={s.field}
                     placeholder="0"
-                    placeholderTextColor="#aaa"
+                    placeholderTextColor={C.inkLight}
                     value={editQuantity}
                     onChangeText={setEditQuantity}
                     keyboardType="numeric"
@@ -401,24 +416,24 @@ export default function Home({ navigation }) {
                 </View>
               </View>
 
-              <Text style={styles.inputLabel}>Unit *</Text>
+              <Text style={s.fieldLabel}>UNIT</Text>
               <TextInput
-                style={styles.input}
-                placeholder="kg / litre / piece etc."
-                placeholderTextColor="#aaa"
+                style={s.field}
+                placeholder="kg / litre / piece"
+                placeholderTextColor={C.inkLight}
                 value={editUnit}
                 onChangeText={setEditUnit}
               />
 
               <TouchableOpacity
-                style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+                style={[s.saveBtn, saving && { opacity: 0.5 }]}
                 onPress={handleSaveProduct}
                 activeOpacity={0.85}
                 disabled={saving}
               >
                 {saving
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.saveBtnText}>Save Changes</Text>
+                  : <Text style={s.saveBtnText}>Save Changes</Text>
                 }
               </TouchableOpacity>
             </ScrollView>
@@ -429,236 +444,338 @@ export default function Home({ navigation }) {
   );
 }
 
-const TAB_HEIGHT = 70;
+const NAV_H = 72;
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F7F7F5" },
-  container: { flex: 1, paddingBottom: TAB_HEIGHT },
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.bg },
+  container: { flex: 1, paddingBottom: NAV_H },
 
   // ── HEADER ──
   header: {
+    backgroundColor: C.surfaceAlt,
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 28,
     paddingBottom: 0,
-    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#E8E8E4",
+    borderBottomColor: C.border,
   },
-  headerTitle: {
-    fontSize: 26,
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginBottom: 20,
+  },
+  wordmark: {
+    fontSize: 14,
     fontWeight: "800",
-    color: "#111",
-    letterSpacing: -0.5,
-    marginBottom: 16,
+    letterSpacing: 0.8,
+    color: C.ink,
+  },
+  headerMeta: {
+    fontSize: 12,
+    color: C.inkLight,
+    letterSpacing: 0.5,
   },
 
-  // ── TOP TAB SWITCHER ──
-  tabSwitcher: { flexDirection: "row", gap: 4 },
-  switchTab: {
+  // tab pills
+  tabRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: -1,
+  },
+  tabPill: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 6,
     paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginBottom: -1,
+    paddingHorizontal: 4,
+    marginRight: 8,
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
-    gap: 6,
   },
-  switchTabActive: { borderBottomColor: "#111" },
-  switchTabText: { fontSize: 14, fontWeight: "600", color: "#aaa" },
-  switchTabTextActive: { color: "#111" },
-  badge: {
-    backgroundColor: "#ECECEC",
+  tabPillActive: {
+    borderBottomColor: C.ink,
+  },
+  tabPillText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: C.inkLight,
+    letterSpacing: 0.2,
+  },
+  tabPillTextActive: {
+    color: C.ink,
+  },
+  tabBadge: {
+    backgroundColor: C.border,
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 1,
-    minWidth: 20,
+    minWidth: 18,
     alignItems: "center",
   },
-  badgeActive: { backgroundColor: "#111" },
-  badgeText: { fontSize: 11, fontWeight: "700", color: "#888" },
-  badgeTextActive: { color: "#fff" },
+  tabBadgeActive: { backgroundColor: C.ink },
+  tabBadgeText: { fontSize: 10, fontWeight: "700", color: C.inkMid },
+  tabBadgeTextActive: { color: "#fff" },
 
-  // ── EMPTY STATE ──
-  emptyState: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 36,
+  // ── EMPTY ──
+  emptyWrap: { flex: 1, justifyContent: "center", alignItems: "center", padding: 40 },
+  emptyBox: { alignItems: "center" },
+  emptyGlyph: { fontSize: 32, color: C.border, marginBottom: 20, letterSpacing: -2 },
+  emptyTitle: { fontSize: 18, fontWeight: "700", color: C.ink, marginBottom: 8, letterSpacing: -0.3 },
+  emptyDesc: { fontSize: 13, color: C.inkMid, textAlign: "center", lineHeight: 20, marginBottom: 28 },
+  emptyBtn: {
+    borderWidth: 1.5,
+    borderColor: C.ink,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
   },
-  emptyIconWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: "#F0EDE8",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  emptyIcon: { fontSize: 38 },
-  emptyTitle: { fontSize: 22, fontWeight: "700", color: "#111", marginBottom: 10, letterSpacing: -0.3 },
-  emptyDesc: { fontSize: 14, color: "#888", textAlign: "center", lineHeight: 21, marginBottom: 32 },
-  setupBtn: { backgroundColor: "#111", paddingVertical: 14, paddingHorizontal: 28, borderRadius: 12 },
-  setupBtnText: { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 0.2 },
+  emptyBtnText: { fontSize: 13, fontWeight: "700", color: C.ink, letterSpacing: 0.5 },
 
-  // ── PRODUCT LIST ──
+  // ── PRODUCT CARD ──
   list: { padding: 16, gap: 10 },
   productCard: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: C.surfaceAlt,
+    borderRadius: 12,
+    padding: 18,
     borderWidth: 1,
-    borderColor: "#ECECEC",
+    borderColor: C.border,
+    shadowColor: C.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  // ✏️ absolute top-right inside the card
-  cardEditBtn: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    zIndex: 1,
-    backgroundColor: "#F3F3F0",
-    borderRadius: 8,
-    paddingHorizontal: 8,
+  productCardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  productName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    color: C.ink,
+    letterSpacing: -0.2,
+    marginRight: 10,
+  },
+  editChip: {
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 6,
+    paddingHorizontal: 10,
     paddingVertical: 4,
+    backgroundColor: C.bg,
   },
-  cardEditIcon: { fontSize: 13 },
-  cardBody: {
+  editChipText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: C.inkMid,
+    letterSpacing: 0.3,
+  },
+  productDesc: {
+    fontSize: 12,
+    color: C.inkLight,
+    marginBottom: 12,
+    lineHeight: 17,
+  },
+  productCardBottom: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingRight: 36, // prevent text going under edit button
-  },
-  cardLeft: { flex: 1, marginRight: 12 },
-  productName: { fontSize: 16, fontWeight: "700", color: "#111", marginBottom: 2 },
-  productDesc: { fontSize: 13, color: "#999", marginBottom: 4 },
-  productMeta: { fontSize: 12, color: "#bbb", fontWeight: "500" },
-  cardRight: { alignItems: "flex-end" },
-  productPrice: { fontSize: 18, fontWeight: "800", color: "#111" },
-
-  // ── ORDER LIST ──
-  orderCard: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#ECECEC",
-  },
-  orderTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 },
-  orderLeft: { flex: 1, marginRight: 10 },
-  orderId: { fontSize: 13, fontWeight: "700", color: "#111", letterSpacing: 0.5, marginBottom: 2 },
-  orderBuyer: { fontSize: 13, color: "#888" },
-  statusPill: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  statusText: { fontSize: 12, fontWeight: "700", textTransform: "capitalize" },
-  orderItems: { marginBottom: 10, gap: 2 },
-  orderItemText: { fontSize: 13, color: "#555" },
-  orderBottom: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#F3F3F3",
-    paddingTop: 10,
+    borderTopColor: C.borderLight,
   },
-  orderDate: { fontSize: 12, color: "#bbb" },
-  orderTotal: { fontSize: 16, fontWeight: "800", color: "#111" },
+  productQty: {
+    fontSize: 12,
+    color: C.inkMid,
+    fontWeight: "500",
+    letterSpacing: 0.2,
+  },
+  productPrice: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: C.ink,
+    letterSpacing: -0.3,
+  },
 
-  // ── BOTTOM TAB BAR ──
-  bottomTabBar: {
+  // ── ORDER CARD ──
+  orderCard: {
+    backgroundColor: C.surfaceAlt,
+    borderRadius: 12,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: C.border,
+    shadowColor: C.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  orderCardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  orderId: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: C.inkLight,
+    letterSpacing: 1.5,
+  },
+  statusRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusLabel: { fontSize: 12, fontWeight: "600", color: C.inkMid },
+  orderBuyer: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: C.ink,
+    marginBottom: 12,
+    letterSpacing: -0.2,
+  },
+  orderItemsWrap: {
+    backgroundColor: C.bg,
+    borderRadius: 8,
+    padding: 12,
+    gap: 5,
+    marginBottom: 12,
+  },
+  orderItemRow: { fontSize: 13, color: C.inkMid, fontWeight: "500" },
+  orderItemQty: { color: C.inkLight },
+  orderFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: C.borderLight,
+  },
+  orderDate: { fontSize: 11, color: C.inkLight, letterSpacing: 0.3 },
+  orderTotal: { fontSize: 17, fontWeight: "800", color: C.ink, letterSpacing: -0.3 },
+
+  // ── BOTTOM NAV ──
+  nav: {
     position: "absolute",
     bottom: 0, left: 0, right: 0,
-    height: TAB_HEIGHT,
-    backgroundColor: "#fff",
+    height: NAV_H,
+    backgroundColor: C.surfaceAlt,
     borderTopWidth: 1,
-    borderTopColor: "#E8E8E4",
+    borderTopColor: C.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    paddingBottom: 8,
-    paddingHorizontal: 16,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
   },
-  bottomTabItem: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 6 },
-  bottomTabIcon: { fontSize: 22, opacity: 0.4 },
-  bottomTabIconActive: { opacity: 1 },
-  bottomTabLabel: { fontSize: 11, color: "#aaa", marginTop: 2, fontWeight: "500" },
-  bottomTabLabelActive: { color: "#111", fontWeight: "700" },
-  addTab: {
-    width: 56, height: 56,
-    borderRadius: 28,
-    backgroundColor: "#111",
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingTop: 6,
+  },
+  navIcon: {
+    fontSize: 16,
+    color: C.inkMid,
+    marginBottom: 1,
+  },
+  navIconActive: {
+    color: C.ink,
+  },
+  navLabel: { fontSize: 11, color: C.inkLight, fontWeight: "500", letterSpacing: 0.3 },
+  navLabelActive: { color: C.ink, fontWeight: "700" },
+  navAdd: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: C.ink,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
-    shadowColor: "#000",
+    marginBottom: 10,
+    shadowColor: C.shadow,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
     elevation: 6,
   },
-  addTabIcon: { color: "#fff", fontSize: 28, lineHeight: 32, fontWeight: "300" },
+  navAddIcon: { color: "#fff", fontSize: 26, lineHeight: 30, fontWeight: "300" },
 
   // ── EDIT MODAL ──
   modalOverlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: "rgba(26,25,22,0.4)",
   },
   modalSheet: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: C.surfaceAlt,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     maxHeight: "92%",
   },
-  modalHeader: {
+  modalHandle: {
+    width: 36,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: C.border,
+    alignSelf: "center",
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  modalHead: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0EE",
+    borderBottomColor: C.borderLight,
   },
-  modalTitle: { fontSize: 18, fontWeight: "800", color: "#111", letterSpacing: -0.3 },
-  closeBtn: {
-    width: 32, height: 32,
-    borderRadius: 16,
-    backgroundColor: "#F0F0EE",
+  modalTitle: { fontSize: 16, fontWeight: "800", color: C.ink, letterSpacing: -0.2 },
+  modalClose: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: C.bg,
+    borderWidth: 1,
+    borderColor: C.border,
     justifyContent: "center",
     alignItems: "center",
   },
-  closeBtnText: { fontSize: 13, fontWeight: "700", color: "#555" },
-  modalScroll: { padding: 24, paddingBottom: 40 },
+  modalCloseText: { fontSize: 11, fontWeight: "700", color: C.inkMid },
+  modalBody: { padding: 24, paddingBottom: 44 },
 
-  // ── INPUTS ──
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#555",
-    marginBottom: 6,
+  // fields
+  fieldLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: C.inkLight,
+    letterSpacing: 1.2,
+    marginBottom: 7,
     marginTop: 4,
-    letterSpacing: 0.3,
-    textTransform: "uppercase",
   },
-  input: {
-    backgroundColor: "#F9F9F7",
+  field: {
+    backgroundColor: C.bg,
     borderWidth: 1,
-    borderColor: "#E0E0DC",
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 14,
-    fontSize: 15,
-    color: "#111",
+    borderColor: C.border,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    marginBottom: 16,
+    fontSize: 14,
+    color: C.ink,
   },
-  inputMultiline: { height: 80, textAlignVertical: "top" },
-  inputRow: { flexDirection: "row", gap: 12 },
-  inputHalf: { flex: 1 },
+  fieldArea: { height: 76, textAlignVertical: "top" },
+  fieldRow: { flexDirection: "row" },
   saveBtn: {
-    backgroundColor: "#111",
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: C.ink,
+    paddingVertical: 15,
+    borderRadius: 10,
     marginTop: 4,
     alignItems: "center",
   },
-  saveBtnDisabled: { opacity: 0.5 },
-  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 15, letterSpacing: 0.2 },
+  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14, letterSpacing: 0.5 },
 });
