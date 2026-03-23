@@ -1,226 +1,3 @@
-// import React, { useEffect, useState } from "react";
-// import {
-//   View,
-//   Text,
-//   TextInput,
-//   TouchableOpacity,
-//   StyleSheet,
-//   ScrollView,
-// } from "react-native";
-// import { apiRequest } from "../services/api";
-// import AsyncStorage from "@react-native-async-storage/async-storage";
-
-// export default function Profile() {
-//   const [isProfileCompleted, setIsProfileCompleted] = useState(false);
-
-//   // form state
-//   const [businessName, setBusinessName] = useState("");
-//   const [shopAddress, setShopAddress] = useState("");
-//   const [city, setCity] = useState("");
-//   const [state, setState] = useState("");
-//   const [pincode, setPincode] = useState("");
-
-//   // saved profile (after API success)
-//   const [profileData, setProfileData] = useState(null);
-
-//   const handleAddDetails = async () => {
-//     const token = await AsyncStorage.getItem("token");
-//     console.log("TOKEN FROM STORAGE:", token); // 👈 add this
-//     console.log("SENDING TO:", "/wholesaler/complete-profile");
-//     if (!businessName || !shopAddress || !city || !state || !pincode) {
-//       alert("Please fill all details");
-//       return;
-//     }
-
-//     try {
-//       // 🔐 get token saved during login
-//       const token = await AsyncStorage.getItem("token");
-
-//       if (!token) {
-//         alert("Login expired. Please login again.");
-//         return;
-//       }
-
-//       const res = await apiRequest(
-//         "/wholesaler/complete-profile",
-//         "PUT",
-//         {
-//           businessName,
-//           address: {
-//             shopAddress,
-//             city,
-//             state,
-//             pincode,
-//           },
-//         },
-//         token // 👈 VERY IMPORTANT
-//       );
-
-//       // ✅ success → switch UI to profile view
-//       setProfileData(res);
-//       setIsProfileCompleted(true);
-//     } catch (error) {
-//       console.log("PROFILE UPDATE ERROR 👉", error);
-//       alert(error.message || "Failed to update profile");
-//     }
-//   };
-
-//   const fetchProfile = async () => {
-//     try {
-//       const token = await AsyncStorage.getItem("token");
-
-//       if (!token) return;
-
-//       const res = await apiRequest(
-//         "/wholesaler/profile",
-//         "GET",
-//         null,
-//         token
-//       );
-
-//       if (res?.isProfileCompleted) {
-//         setProfileData(res.profile);
-//         setIsProfileCompleted(true);
-//       }
-//     } catch (error) {
-//       console.log("FETCH PROFILE ERROR 👉", error);
-//     }
-//   };
-//   useEffect(() => {
-//     fetchProfile();
-//   }, []);
-
-//   // ================= PROFILE VIEW =================
-//   if (isProfileCompleted && profileData) {
-//     return (
-//       <View style={styles.container}>
-//         <Text style={styles.heading}>My Profile</Text>
-
-//         <View style={styles.card}>
-//           <Text style={styles.label}>Business Name</Text>
-//           <Text style={styles.value}>
-//             {profileData.businessName}
-//           </Text>
-
-//           <Text style={styles.label}>Shop Address</Text>
-//           <Text style={styles.value}>
-//             {profileData?.address?.shopAddress || "-"}
-//           </Text>
-
-//           <Text style={styles.label}>City</Text>
-//           <Text style={styles.value}>
-//             {profileData?.address?.city || "-"}
-//           </Text>
-
-//           <Text style={styles.label}>State</Text>
-//           <Text style={styles.value}>
-//             {profileData?.address?.state || "-"}
-//           </Text>
-
-//           <Text style={styles.label}>Pincode</Text>
-//           <Text style={styles.value}>
-//             {profileData?.address?.pincode || "-"}
-//           </Text>
-//         </View>
-//       </View>
-//     );
-//   }
-
-
-//   // ================= PROFILE FORM =================
-//   return (
-//     <ScrollView contentContainerStyle={styles.container}>
-//       <Text style={styles.heading}>Complete Your Profile</Text>
-
-//       <TextInput
-//         style={styles.input}
-//         placeholder="Business Name"
-//         value={businessName}
-//         onChangeText={setBusinessName}
-//       />
-
-//       <TextInput
-//         style={styles.input}
-//         placeholder="Shop Address"
-//         value={shopAddress}
-//         onChangeText={setShopAddress}
-//       />
-
-//       <TextInput
-//         style={styles.input}
-//         placeholder="City"
-//         value={city}
-//         onChangeText={setCity}
-//       />
-
-//       <TextInput
-//         style={styles.input}
-//         placeholder="State"
-//         value={state}
-//         onChangeText={setState}
-//       />
-
-//       <TextInput
-//         style={styles.input}
-//         placeholder="Pincode"
-//         keyboardType="number-pad"
-//         value={pincode}
-//         onChangeText={setPincode}
-//       />
-
-//       <TouchableOpacity style={styles.button} onPress={handleAddDetails}>
-//         <Text style={styles.buttonText}>Add Details</Text>
-//       </TouchableOpacity>
-//     </ScrollView>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flexGrow: 1,
-//     padding: 20,
-//     backgroundColor: "#fff",
-//   },
-//   heading: {
-//     fontSize: 22,
-//     fontWeight: "bold",
-//     marginBottom: 20,
-//     textAlign: "center",
-//   },
-//   input: {
-//     borderWidth: 1,
-//     borderColor: "#ccc",
-//     borderRadius: 8,
-//     padding: 12,
-//     marginBottom: 14,
-//   },
-//   button: {
-//     backgroundColor: "#000",
-//     padding: 14,
-//     borderRadius: 8,
-//     marginTop: 10,
-//   },
-//   buttonText: {
-//     color: "#fff",
-//     textAlign: "center",
-//     fontWeight: "bold",
-//   },
-//   card: {
-//     borderWidth: 1,
-//     borderColor: "#ddd",
-//     borderRadius: 10,
-//     padding: 16,
-//   },
-//   label: {
-//     fontSize: 12,
-//     color: "#666",
-//     marginTop: 10,
-//   },
-//   value: {
-//     fontSize: 16,
-//     fontWeight: "500",
-//   },
-// });
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -230,55 +7,33 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from "react-native";
 import { apiRequest } from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Profile({ navigation }) {
   const [isProfileCompleted, setIsProfileCompleted] = useState(false);
+  const [profileData, setProfileData]   = useState(null);
+  const [pageLoading, setPageLoading]   = useState(true);
 
-  // form state
+  // ── form state (shared between complete-profile & edit) ──
   const [businessName, setBusinessName] = useState("");
-  const [shopAddress, setShopAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [pincode, setPincode] = useState("");
+  const [shopAddress, setShopAddress]   = useState("");
+  const [city, setCity]                 = useState("");
+  const [state, setState]               = useState("");
+  const [pincode, setPincode]           = useState("");
 
-  // saved profile (after API success)
-  const [profileData, setProfileData] = useState(null);
+  // ── edit modal ──
+  const [editVisible, setEditVisible]   = useState(false);
+  const [saving, setSaving]             = useState(false);
 
-  const handleAddDetails = async () => {
-    if (!businessName || !shopAddress || !city || !state || !pincode) {
-      alert("Please fill all details");
-      return;
-    }
-
-    try {
-      const token = await AsyncStorage.getItem("token");
-
-      if (!token) {
-        alert("Login expired. Please login again.");
-        return;
-      }
-
-      const res = await apiRequest(
-        "/wholesaler/complete-profile",
-        "PUT",
-        {
-          businessName,
-          address: { shopAddress, city, state, pincode },
-        },
-        token
-      );
-
-      setProfileData(res);
-      setIsProfileCompleted(true);
-    } catch (error) {
-      console.log("PROFILE UPDATE ERROR 👉", error);
-      alert(error.message || "Failed to update profile");
-    }
-  };
-
+  // ─────────────────────────────────────────────────────────────
+  // Fetch profile on mount
+  // ─────────────────────────────────────────────────────────────
   const fetchProfile = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
@@ -287,19 +42,95 @@ export default function Profile({ navigation }) {
       const res = await apiRequest("/wholesaler/profile", "GET", null, token);
 
       if (res?.isProfileCompleted) {
-        setProfileData(res.profile);
+        const p = res.profile;
+        setProfileData(p);
         setIsProfileCompleted(true);
+        // pre-fill edit form with current values
+        prefillForm(p);
       }
     } catch (error) {
       console.log("FETCH PROFILE ERROR 👉", error);
+    } finally {
+      setPageLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  const prefillForm = (p) => {
+    setBusinessName(p?.businessName || "");
+    setShopAddress(p?.address?.shopAddress || "");
+    setCity(p?.address?.city || "");
+    setState(p?.address?.state || "");
+    setPincode(p?.address?.pincode || "");
+  };
 
-  // ── BOTTOM TAB BAR (shared) ──────────────────────────────────────────────
+  useEffect(() => { fetchProfile(); }, []);
+
+  // ─────────────────────────────────────────────────────────────
+  // Complete profile (first time)
+  // ─────────────────────────────────────────────────────────────
+  const handleCompleteProfile = async () => {
+    if (!businessName || !shopAddress || !city || !state || !pincode) {
+      alert("Please fill all details");
+      return;
+    }
+    try {
+      setSaving(true);
+      const token = await AsyncStorage.getItem("token");
+      if (!token) { alert("Login expired. Please login again."); return; }
+
+      const res = await apiRequest(
+        "/wholesaler/complete-profile",
+        "PUT",
+        { businessName, address: { shopAddress, city, state, pincode } },
+        token
+      );
+
+      setProfileData(res);
+      setIsProfileCompleted(true);
+    } catch (error) {
+      console.log("PROFILE UPDATE ERROR 👉", error);
+      alert(error.message || "Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // Update profile (edit)
+  // ─────────────────────────────────────────────────────────────
+  const handleUpdateProfile = async () => {
+    if (!businessName || !shopAddress || !city || !state || !pincode) {
+      alert("Please fill all details");
+      return;
+    }
+    try {
+      setSaving(true);
+      const token = await AsyncStorage.getItem("token");
+      if (!token) { alert("Login expired. Please login again."); return; }
+
+      const res = await apiRequest(
+        "/wholesaler/update-profile",
+        "PUT",
+        { businessName, address: { shopAddress, city, state, pincode } },
+        token
+      );
+
+      // res.profile has the fresh data from DB
+      const updated = res.profile;
+      setProfileData(updated);
+      prefillForm(updated);
+      setEditVisible(false);
+    } catch (error) {
+      console.log("PROFILE EDIT ERROR 👉", error);
+      alert(error.message || "Failed to save changes");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // Bottom tab bar
+  // ─────────────────────────────────────────────────────────────
   const BottomTabBar = () => (
     <View style={styles.tabBar}>
       <TouchableOpacity
@@ -319,75 +150,171 @@ export default function Profile({ navigation }) {
         <Text style={styles.addTabIcon}>＋</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.tabItem}
-        onPress={() => {}} // already on profile
-        activeOpacity={0.7}
-      >
+      <TouchableOpacity style={styles.tabItem} activeOpacity={0.7}>
         <Text style={[styles.tabIcon, styles.tabIconActive]}>👤</Text>
         <Text style={[styles.tabLabel, styles.tabLabelActive]}>Profile</Text>
       </TouchableOpacity>
     </View>
   );
-  // ────────────────────────────────────────────────────────────────────────
 
-  // ================= PROFILE VIEW =================
+  // ─────────────────────────────────────────────────────────────
+  // Loading
+  // ─────────────────────────────────────────────────────────────
+  if (pageLoading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ActivityIndicator style={{ flex: 1 }} size="large" color="#111" />
+      </SafeAreaView>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // PROFILE VIEW (completed)
+  // ─────────────────────────────────────────────────────────────
   if (isProfileCompleted && profileData) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.container}>
+
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>My Profile</Text>
-            <Text style={styles.headerSub}>Business details</Text>
+            <View style={styles.headerRow}>
+              <View>
+                <Text style={styles.headerTitle}>My Profile</Text>
+                <Text style={styles.headerSub}>Business details</Text>
+              </View>
+              {/* ✏️ Edit button */}
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => {
+                  prefillForm(profileData); // always fresh values
+                  setEditVisible(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.editBtnIcon}>✏️</Text>
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView contentContainerStyle={styles.scrollContent}>
             <View style={styles.card}>
-              <Text style={styles.label}>Business Name</Text>
-              <Text style={styles.value}>{profileData.businessName}</Text>
-
+              <Row label="Business Name" value={profileData.businessName} />
               <View style={styles.divider} />
-
-              <Text style={styles.label}>Shop Address</Text>
-              <Text style={styles.value}>
-                {profileData?.address?.shopAddress || "-"}
-              </Text>
-
+              <Row label="Shop Address"  value={profileData?.address?.shopAddress} />
               <View style={styles.divider} />
-
-              <Text style={styles.label}>City</Text>
-              <Text style={styles.value}>
-                {profileData?.address?.city || "-"}
-              </Text>
-
+              <Row label="City"          value={profileData?.address?.city} />
               <View style={styles.divider} />
-
-              <Text style={styles.label}>State</Text>
-              <Text style={styles.value}>
-                {profileData?.address?.state || "-"}
-              </Text>
-
+              <Row label="State"         value={profileData?.address?.state} />
               <View style={styles.divider} />
-
-              <Text style={styles.label}>Pincode</Text>
-              <Text style={styles.value}>
-                {profileData?.address?.pincode || "-"}
-              </Text>
+              <Row label="Pincode"       value={profileData?.address?.pincode} />
             </View>
           </ScrollView>
         </View>
 
         <BottomTabBar />
+
+        {/* ── EDIT MODAL ── */}
+        <Modal
+          visible={editVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setEditVisible(false)}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+          >
+            <View style={styles.modalSheet}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Edit Profile</Text>
+                <TouchableOpacity
+                  onPress={() => setEditVisible(false)}
+                  style={styles.closeBtn}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.closeBtnText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                contentContainerStyle={styles.modalScroll}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <Text style={styles.inputLabel}>Business Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Business Name"
+                  placeholderTextColor="#aaa"
+                  value={businessName}
+                  onChangeText={setBusinessName}
+                />
+
+                <Text style={styles.inputLabel}>Shop Address</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Shop Address"
+                  placeholderTextColor="#aaa"
+                  value={shopAddress}
+                  onChangeText={setShopAddress}
+                />
+
+                <Text style={styles.inputLabel}>City</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="City"
+                  placeholderTextColor="#aaa"
+                  value={city}
+                  onChangeText={setCity}
+                />
+
+                <Text style={styles.inputLabel}>State</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="State"
+                  placeholderTextColor="#aaa"
+                  value={state}
+                  onChangeText={setState}
+                />
+
+                <Text style={styles.inputLabel}>Pincode</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Pincode"
+                  placeholderTextColor="#aaa"
+                  keyboardType="number-pad"
+                  value={pincode}
+                  onChangeText={setPincode}
+                />
+
+                <TouchableOpacity
+                  style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+                  onPress={handleUpdateProfile}
+                  activeOpacity={0.85}
+                  disabled={saving}
+                >
+                  {saving
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={styles.saveBtnText}>Save Changes</Text>
+                  }
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </SafeAreaView>
     );
   }
 
-  // ================= PROFILE FORM =================
+  // ─────────────────────────────────────────────────────────────
+  // PROFILE FORM (first time setup)
+  // ─────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Complete Profile</Text>
           <Text style={styles.headerSub}>Fill in your business details</Text>
@@ -397,6 +324,7 @@ export default function Profile({ navigation }) {
           contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
           keyboardShouldPersistTaps="handled"
         >
+          <Text style={styles.inputLabel}>Business Name</Text>
           <TextInput
             style={styles.input}
             placeholder="Business Name"
@@ -404,6 +332,8 @@ export default function Profile({ navigation }) {
             value={businessName}
             onChangeText={setBusinessName}
           />
+
+          <Text style={styles.inputLabel}>Shop Address</Text>
           <TextInput
             style={styles.input}
             placeholder="Shop Address"
@@ -411,6 +341,8 @@ export default function Profile({ navigation }) {
             value={shopAddress}
             onChangeText={setShopAddress}
           />
+
+          <Text style={styles.inputLabel}>City</Text>
           <TextInput
             style={styles.input}
             placeholder="City"
@@ -418,6 +350,8 @@ export default function Profile({ navigation }) {
             value={city}
             onChangeText={setCity}
           />
+
+          <Text style={styles.inputLabel}>State</Text>
           <TextInput
             style={styles.input}
             placeholder="State"
@@ -425,6 +359,8 @@ export default function Profile({ navigation }) {
             value={state}
             onChangeText={setState}
           />
+
+          <Text style={styles.inputLabel}>Pincode</Text>
           <TextInput
             style={styles.input}
             placeholder="Pincode"
@@ -435,11 +371,15 @@ export default function Profile({ navigation }) {
           />
 
           <TouchableOpacity
-            style={styles.button}
-            onPress={handleAddDetails}
+            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+            onPress={handleCompleteProfile}
             activeOpacity={0.85}
+            disabled={saving}
           >
-            <Text style={styles.buttonText}>Save Details</Text>
+            {saving
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.saveBtnText}>Save Details</Text>
+            }
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -449,17 +389,19 @@ export default function Profile({ navigation }) {
   );
 }
 
+// ── Small helper component ──
+const Row = ({ label, value }) => (
+  <View>
+    <Text style={styles.label}>{label}</Text>
+    <Text style={styles.value}>{value || "-"}</Text>
+  </View>
+);
+
 const TAB_HEIGHT = 70;
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#F7F7F5",
-  },
-  container: {
-    flex: 1,
-    paddingBottom: TAB_HEIGHT,
-  },
+  safe: { flex: 1, backgroundColor: "#F7F7F5" },
+  container: { flex: 1, paddingBottom: TAB_HEIGHT },
 
   // ── HEADER ──
   header: {
@@ -469,6 +411,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E8E8E4",
     backgroundColor: "#fff",
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 26,
@@ -483,11 +430,26 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  scrollContent: {
-    padding: 20,
+  // ✏️ Edit button
+  editBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#F3F3F0",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+  },
+  editBtnIcon: { fontSize: 14 },
+  editBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#111",
   },
 
-  // ── PROFILE VIEW CARD ──
+  scrollContent: { padding: 20 },
+
+  // ── PROFILE CARD ──
   card: {
     backgroundColor: "#fff",
     borderRadius: 14,
@@ -514,37 +476,91 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
 
-  // ── FORM ──
+  // ── INPUTS ──
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#555",
+    marginBottom: 6,
+    marginTop: 4,
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
   input: {
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: "#E0E0DC",
     borderRadius: 10,
     padding: 14,
-    marginBottom: 12,
+    marginBottom: 14,
     fontSize: 15,
     color: "#111",
   },
-  button: {
+  saveBtn: {
     backgroundColor: "#111",
     padding: 16,
     borderRadius: 12,
-    marginTop: 8,
+    marginTop: 4,
+    alignItems: "center",
   },
-  buttonText: {
+  saveBtnDisabled: { opacity: 0.5 },
+  saveBtnText: {
     color: "#fff",
-    textAlign: "center",
     fontWeight: "700",
     fontSize: 15,
     letterSpacing: 0.2,
   },
 
+  // ── EDIT MODAL ──
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  modalSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: "90%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0EE",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#111",
+    letterSpacing: -0.3,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F0F0EE",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#555",
+  },
+  modalScroll: {
+    padding: 24,
+    paddingBottom: 40,
+  },
+
   // ── BOTTOM TAB BAR ──
   tabBar: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 0, left: 0, right: 0,
     height: TAB_HEIGHT,
     backgroundColor: "#fff",
     borderTopWidth: 1,
@@ -561,26 +577,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 6,
   },
-  tabIcon: {
-    fontSize: 22,
-    opacity: 0.4,
-  },
-  tabIconActive: {
-    opacity: 1,
-  },
-  tabLabel: {
-    fontSize: 11,
-    color: "#aaa",
-    marginTop: 2,
-    fontWeight: "500",
-  },
-  tabLabelActive: {
-    color: "#111",
-    fontWeight: "700",
-  },
+  tabIcon: { fontSize: 22, opacity: 0.4 },
+  tabIconActive: { opacity: 1 },
+  tabLabel: { fontSize: 11, color: "#aaa", marginTop: 2, fontWeight: "500" },
+  tabLabelActive: { color: "#111", fontWeight: "700" },
   addTab: {
-    width: 56,
-    height: 56,
+    width: 56, height: 56,
     borderRadius: 28,
     backgroundColor: "#111",
     justifyContent: "center",
@@ -592,10 +594,5 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  addTabIcon: {
-    color: "#fff",
-    fontSize: 28,
-    lineHeight: 32,
-    fontWeight: "300",
-  },
+  addTabIcon: { color: "#fff", fontSize: 28, lineHeight: 32, fontWeight: "300" },
 });
