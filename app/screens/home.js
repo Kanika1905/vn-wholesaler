@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   ActivityIndicator,
   Modal,
@@ -12,26 +11,32 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
+  StatusBar,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiRequest } from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+//import { ..., Alert } from "react-native";
 
 // ── Design tokens ──────────────────────────────────────────────
 const C = {
-  bg:          "#F5F4F0",   // warm off-white canvas
-  surface:     "#FAFAF8",   // card surface
-  surfaceAlt:  "#FFFFFF",
-  border:      "#E6E4DE",   // warm grey border
+  bg: "#F5F4F0",
+  surface: "#FAFAF8",
+  surfaceAlt: "#FFFFFF",
+  border: "#E6E4DE",
   borderLight: "#EEECE7",
-  ink:         "#1A1916",   // near-black text
-  inkMid:      "#6B6860",   // secondary text
-  inkLight:    "#A8A59E",   // tertiary / metadata
-  accent:      "#1A1916",   // same as ink — monochrome accent
-  shadow:      "#1A1916",
+  ink: "#1A1916",
+  inkMid: "#6B6860",
+  inkLight: "#A8A59E",
+  accent: "#1A1916",
+  shadow: "#1A1916",
 };
 
 export default function Home({ navigation }) {
+  const insets = useSafeAreaInsets();
+
   const [activeTab, setActiveTab] = useState("store");
   const [isProfileCompleted, setIsProfileCompleted] = useState(false);
   const [businessName, setBusinessName] = useState("");
@@ -49,7 +54,7 @@ export default function Home({ navigation }) {
   const [editUnit, setEditUnit] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const fetchHomeData = useCallback(async () => {
+  const fetchHomeData = async () => {
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem("token");
@@ -66,16 +71,24 @@ export default function Home({ navigation }) {
       const productsRes = await apiRequest("/wholesaler/products", "GET", null, token);
       if (Array.isArray(productsRes)) setProducts(productsRes);
 
-      const ordersRes = await apiRequest("/wholesaler/orders", "GET", null, token);
-      if (Array.isArray(ordersRes)) setOrders(ordersRes);
+      try {
+        const ordersRes = await apiRequest("/wholesaler/orders", "GET", null, token);
+        if (Array.isArray(ordersRes)) setOrders(ordersRes);
+      } catch (_) { }
+
     } catch (error) {
       console.log("HOME FETCH ERROR 👉", error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
-  useFocusEffect(fetchHomeData);
+  // useCallback wraps a plain (non-async) function that calls fetchHomeData
+  useFocusEffect(
+    useCallback(() => {
+      fetchHomeData();
+    }, [])
+  );
 
   const openEdit = (product) => {
     setEditingProduct(product);
@@ -126,26 +139,118 @@ export default function Home({ navigation }) {
     }
   };
 
+  const handleDeleteProduct = async (productId) => {
+    Alert.alert(
+      "Delete product",
+      "Are you sure you want to delete this product?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem("token");
+              if (!token) return;
+              await apiRequest(`/wholesaler/products/${productId}`, "DELETE", null, token);
+              setProducts((prev) => prev.filter((p) => p._id !== productId));
+            } catch (error) {
+              console.log("DELETE ERROR 👉", error);
+              Alert.alert("Error", "Failed to delete product");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const statusStyle = (status) => {
     switch (status?.toLowerCase()) {
-      case "pending":   return { dot: "#C9943A", label: "Pending" };
+      case "pending": return { dot: "#C9943A", label: "Pending" };
       case "confirmed": return { dot: "#4A7C6F", label: "Confirmed" };
       case "delivered": return { dot: "#3A6B3A", label: "Delivered" };
       case "cancelled": return { dot: "#8B3A3A", label: "Cancelled" };
-      default:          return { dot: C.inkLight, label: status || "Pending" };
+      default: return { dot: C.inkLight, label: status || "Pending" };
     }
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={s.safe}>
+      <View style={[s.safe, { paddingTop: insets.top }]}>
         <ActivityIndicator style={{ flex: 1 }} size="large" color={C.ink} />
-      </SafeAreaView>
+      </View>
     );
   }
 
+  // ── PRODUCT CARD ────────────────────────────────────────────
+  const renderProduct = ({ item }) => {
+    // images is an array from Cloudinary; fall back gracefully
+    const firstImage = Array.isArray(item.images) && item.images.length > 0
+      ? item.images[0]
+      : null;
+
+    return (
+      <View style={s.productCard}>
+        <View style={s.productCardInner}>
+
+          {/* Image thumbnail */}
+          {firstImage ? (
+            <Image
+              source={{ uri: firstImage }}
+              style={s.productThumb}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={s.productThumbPlaceholder}>
+              <Text style={s.productThumbPlaceholderText}>📦</Text>
+            </View>
+          )}
+
+          {/* Text content */}
+          <View style={s.productInfo}>
+            {/* top row: name + edit */}
+            <View style={s.productCardTop}>
+              <Text style={s.productName} numberOfLines={1}>{item.name}</Text>
+              <View style={s.cardActions}>
+                <TouchableOpacity
+                  style={s.editChip}
+                  onPress={() => openEdit(item)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                >
+                  <Text style={s.editChipText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={s.deleteChip}
+                  onPress={() => handleDeleteProduct(item._id)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                >
+                  <Text style={s.deleteChipText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* description */}
+            {item.description ? (
+              <Text style={s.productDesc} numberOfLines={1}>{item.description}</Text>
+            ) : null}
+
+            {/* bottom row: qty + price */}
+            <View style={s.productCardBottom}>
+              <Text style={s.productQty}>{item.quantity} {item.unit}</Text>
+              <Text style={s.productPrice}>₹{item.price}</Text>
+            </View>
+          </View>
+
+        </View>
+      </View>
+    );
+  };
+
   return (
-    <SafeAreaView style={s.safe}>
+    <View style={[s.safe, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={C.surfaceAlt} />
       <View style={s.container}>
 
         {/* ── HEADER ── */}
@@ -221,33 +326,7 @@ export default function Home({ navigation }) {
               keyExtractor={(item) => item._id}
               contentContainerStyle={s.list}
               showsVerticalScrollIndicator={false}
-              renderItem={({ item }) => (
-                <View style={s.productCard}>
-                  {/* top row: name + edit */}
-                  <View style={s.productCardTop}>
-                    <Text style={s.productName} numberOfLines={1}>{item.name}</Text>
-                    <TouchableOpacity
-                      style={s.editChip}
-                      onPress={() => openEdit(item)}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                    >
-                      <Text style={s.editChipText}>Edit</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* description */}
-                  {item.description ? (
-                    <Text style={s.productDesc} numberOfLines={1}>{item.description}</Text>
-                  ) : null}
-
-                  {/* bottom row: qty + price */}
-                  <View style={s.productCardBottom}>
-                    <Text style={s.productQty}>{item.quantity} {item.unit}</Text>
-                    <Text style={s.productPrice}>₹{item.price}</Text>
-                  </View>
-                </View>
-              )}
+              renderItem={renderProduct}
             />
           )
         )}
@@ -272,7 +351,6 @@ export default function Home({ navigation }) {
                 const st = statusStyle(item.status);
                 return (
                   <View style={s.orderCard}>
-                    {/* top: id + status */}
                     <View style={s.orderCardTop}>
                       <Text style={s.orderId}>#{item._id?.slice(-6).toUpperCase()}</Text>
                       <View style={s.statusRow}>
@@ -280,11 +358,7 @@ export default function Home({ navigation }) {
                         <Text style={s.statusLabel}>{st.label}</Text>
                       </View>
                     </View>
-
-                    {/* buyer */}
                     <Text style={s.orderBuyer}>{item.buyerName || "Buyer"}</Text>
-
-                    {/* items */}
                     {Array.isArray(item.items) && item.items.length > 0 && (
                       <View style={s.orderItemsWrap}>
                         {item.items.map((p, idx) => (
@@ -295,14 +369,12 @@ export default function Home({ navigation }) {
                         ))}
                       </View>
                     )}
-
-                    {/* footer: date + total */}
                     <View style={s.orderFooter}>
                       <Text style={s.orderDate}>
                         {item.createdAt
                           ? new Date(item.createdAt).toLocaleDateString("en-IN", {
-                              day: "numeric", month: "short", year: "numeric",
-                            })
+                            day: "numeric", month: "short", year: "numeric",
+                          })
                           : ""}
                       </Text>
                       <Text style={s.orderTotal}>₹{item.totalAmount}</Text>
@@ -316,7 +388,7 @@ export default function Home({ navigation }) {
       </View>
 
       {/* ── BOTTOM NAV ── */}
-      <View style={s.nav}>
+      <View style={[s.nav, { paddingBottom: insets.bottom + 10 }]}>
         <TouchableOpacity style={s.navItem} activeOpacity={0.7}>
           <Text style={[s.navIcon, s.navIconActive]}>⌂</Text>
           <Text style={[s.navLabel, s.navLabelActive]}>Home</Text>
@@ -353,7 +425,6 @@ export default function Home({ navigation }) {
         >
           <View style={s.modalSheet}>
             <View style={s.modalHandle} />
-
             <View style={s.modalHead}>
               <Text style={s.modalTitle}>Edit Product</Text>
               <TouchableOpacity
@@ -440,7 +511,7 @@ export default function Home({ navigation }) {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -465,24 +536,29 @@ const s = StyleSheet.create({
     alignItems: "flex-end",
     marginBottom: 20,
   },
-  wordmark: {
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 0.8,
-    color: C.ink,
-  },
-  headerMeta: {
-    fontSize: 12,
-    color: C.inkLight,
-    letterSpacing: 0.5,
-  },
+  wordmark: { fontSize: 14, fontWeight: "800", letterSpacing: 0.8, color: C.ink },
+  headerMeta: { fontSize: 12, color: C.inkLight, letterSpacing: 0.5 },
 
-  // tab pills
-  tabRow: {
+  cardActions: {
     flexDirection: "row",
     gap: 6,
-    marginBottom: -1,
   },
+  deleteChip: {
+    borderWidth: 1,
+    borderColor: "#F0DADA",
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: "#FDF4F4",
+  },
+  deleteChipText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#8B3A3A",
+    letterSpacing: 0.3,
+  },
+  // tab pills
+  tabRow: { flexDirection: "row", gap: 6, marginBottom: -1 },
   tabPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -493,18 +569,9 @@ const s = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
-  tabPillActive: {
-    borderBottomColor: C.ink,
-  },
-  tabPillText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: C.inkLight,
-    letterSpacing: 0.2,
-  },
-  tabPillTextActive: {
-    color: C.ink,
-  },
+  tabPillActive: { borderBottomColor: C.ink },
+  tabPillText: { fontSize: 13, fontWeight: "600", color: C.inkLight, letterSpacing: 0.2 },
+  tabPillTextActive: { color: C.ink },
   tabBadge: {
     backgroundColor: C.border,
     borderRadius: 10,
@@ -537,14 +604,44 @@ const s = StyleSheet.create({
   productCard: {
     backgroundColor: C.surfaceAlt,
     borderRadius: 12,
-    padding: 18,
     borderWidth: 1,
     borderColor: C.border,
+    overflow: "hidden",
     shadowColor: C.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
+  },
+  productCardInner: {
+    flexDirection: "row",
+    alignItems: "stretch",
+  },
+
+  // thumbnail
+  productThumb: {
+    width: 88,
+    height: 88,
+    backgroundColor: C.bg,
+  },
+  productThumbPlaceholder: {
+    width: 88,
+    height: 88,
+    backgroundColor: C.bg,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRightWidth: 1,
+    borderRightColor: C.borderLight,
+  },
+  productThumbPlaceholderText: {
+    fontSize: 28,
+  },
+
+  // info section next to thumbnail
+  productInfo: {
+    flex: 1,
+    padding: 14,
+    justifyContent: "space-between",
   },
   productCardTop: {
     flexDirection: "row",
@@ -568,39 +665,19 @@ const s = StyleSheet.create({
     paddingVertical: 4,
     backgroundColor: C.bg,
   },
-  editChipText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: C.inkMid,
-    letterSpacing: 0.3,
-  },
-  productDesc: {
-    fontSize: 12,
-    color: C.inkLight,
-    marginBottom: 12,
-    lineHeight: 17,
-  },
+  editChipText: { fontSize: 11, fontWeight: "600", color: C.inkMid, letterSpacing: 0.3 },
+  productDesc: { fontSize: 12, color: C.inkLight, lineHeight: 17 },
   productCardBottom: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: C.borderLight,
   },
-  productQty: {
-    fontSize: 12,
-    color: C.inkMid,
-    fontWeight: "500",
-    letterSpacing: 0.2,
-  },
-  productPrice: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: C.ink,
-    letterSpacing: -0.3,
-  },
+  productQty: { fontSize: 12, color: C.inkMid, fontWeight: "500", letterSpacing: 0.2 },
+  productPrice: { fontSize: 17, fontWeight: "800", color: C.ink, letterSpacing: -0.3 },
 
   // ── ORDER CARD ──
   orderCard: {
@@ -621,22 +698,11 @@ const s = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
-  orderId: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: C.inkLight,
-    letterSpacing: 1.5,
-  },
+  orderId: { fontSize: 11, fontWeight: "800", color: C.inkLight, letterSpacing: 1.5 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusLabel: { fontSize: 12, fontWeight: "600", color: C.inkMid },
-  orderBuyer: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: C.ink,
-    marginBottom: 12,
-    letterSpacing: -0.2,
-  },
+  orderBuyer: { fontSize: 15, fontWeight: "700", color: C.ink, marginBottom: 12, letterSpacing: -0.2 },
   orderItemsWrap: {
     backgroundColor: C.bg,
     borderRadius: 8,
@@ -661,31 +727,18 @@ const s = StyleSheet.create({
   nav: {
     position: "absolute",
     bottom: 0, left: 0, right: 0,
-    height: NAV_H,
     backgroundColor: C.surfaceAlt,
     borderTopWidth: 1,
     borderTopColor: C.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    paddingBottom: 10,
+    paddingTop: 10,
     paddingHorizontal: 20,
   },
-  navItem: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingTop: 6,
-  },
-  navIcon: {
-    fontSize: 16,
-    color: C.inkMid,
-    marginBottom: 1,
-  },
-  navIconActive: {
-    color: C.ink,
-  },
+  navItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 6 },
+  navIcon: { fontSize: 16, color: C.inkMid, marginBottom: 1 },
+  navIconActive: { color: C.ink },
   navLabel: { fontSize: 11, color: C.inkLight, fontWeight: "500", letterSpacing: 0.3 },
   navLabelActive: { color: C.ink, fontWeight: "700" },
   navAdd: {
@@ -748,7 +801,6 @@ const s = StyleSheet.create({
   modalCloseText: { fontSize: 11, fontWeight: "700", color: C.inkMid },
   modalBody: { padding: 24, paddingBottom: 44 },
 
-  // fields
   fieldLabel: {
     fontSize: 10,
     fontWeight: "700",
