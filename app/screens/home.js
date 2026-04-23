@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -19,9 +19,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiRequest } from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-//import { ..., Alert } from "react-native";
 
-// ── Design tokens ──────────────────────────────────────────────
 const C = {
   bg: "#F5F4F0",
   surface: "#FAFAF8",
@@ -38,22 +36,39 @@ const C = {
 export default function Home({ navigation }) {
   const insets = useSafeAreaInsets();
 
-  const [activeTab, setActiveTab] = useState("store");
+  const [activeTab, setActiveTab]               = useState("store");
   const [isProfileCompleted, setIsProfileCompleted] = useState(false);
-  const [businessName, setBusinessName] = useState("");
-  const [products, setProducts] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [businessName, setBusinessName]         = useState("");
+  const [products, setProducts]                 = useState([]);
+  const [orders, setOrders]                     = useState([]);
+  const [loading, setLoading]                   = useState(true);
 
-  // edit modal
-  const [editVisible, setEditVisible] = useState(false);
+  // ── edit modal ──────────────────────────────────────────
+  const [editVisible, setEditVisible]       = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [editName, setEditName] = useState("");
+  const [editName, setEditName]             = useState("");
   const [editDescription, setEditDescription] = useState("");
-  const [editPrice, setEditPrice] = useState("");
-  const [editQuantity, setEditQuantity] = useState("");
-  const [editUnit, setEditUnit] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [editPrice, setEditPrice]           = useState("");
+  const [editQuantity, setEditQuantity]     = useState("");
+  const [editUnit, setEditUnit]             = useState("");
+  const [editCategoryId, setEditCategoryId] = useState(null);   // ← new
+  const [saving, setSaving]                 = useState(false);
+
+  // ── categories ──────────────────────────────────────────
+  const [categories, setCategories] = useState([]);             // ← new
+
+  // fetch categories once on mount
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await apiRequest("/categories", "GET");
+        if (Array.isArray(res)) setCategories(res);
+      } catch (err) {
+        console.log("Categories fetch error:", err);
+      }
+    };
+    loadCategories();
+  }, []);
 
   const fetchHomeData = async () => {
     try {
@@ -75,7 +90,7 @@ export default function Home({ navigation }) {
       try {
         const ordersRes = await apiRequest("/wholesaler/orders", "GET", null, token);
         if (Array.isArray(ordersRes)) setOrders(ordersRes);
-      } catch (_) { }
+      } catch (_) {}
 
     } catch (error) {
       console.log("HOME FETCH ERROR 👉", error);
@@ -84,7 +99,6 @@ export default function Home({ navigation }) {
     }
   };
 
-  // useCallback wraps a plain (non-async) function that calls fetchHomeData
   useFocusEffect(
     useCallback(() => {
       fetchHomeData();
@@ -98,28 +112,30 @@ export default function Home({ navigation }) {
     setEditPrice(String(product.price || ""));
     setEditQuantity(String(product.quantity || ""));
     setEditUnit(product.unit || "");
+    setEditCategoryId(product.categoryId?._id || null);         // ← new
     setEditVisible(true);
   };
 
   const handleSaveProduct = async () => {
     if (!editName || !editPrice || !editQuantity || !editUnit) {
-      alert("Please fill all required fields");
+      Alert.alert("Missing fields", "Please fill all required fields.");
       return;
     }
     try {
       setSaving(true);
       const token = await AsyncStorage.getItem("token");
-      if (!token) { alert("Login expired."); return; }
+      if (!token) { Alert.alert("Session expired", "Please login again."); return; }
 
       const res = await apiRequest(
         `/wholesaler/products/${editingProduct._id}`,
         "PUT",
         {
-          name: editName.trim(),
+          name:        editName.trim(),
           description: editDescription.trim(),
-          price: Number(editPrice),
-          quantity: Number(editQuantity),
-          unit: editUnit.trim(),
+          price:       Number(editPrice),
+          quantity:    Number(editQuantity),
+          unit:        editUnit.trim(),
+          categoryId:  editCategoryId,                          // ← new
         },
         token
       );
@@ -134,7 +150,7 @@ export default function Home({ navigation }) {
       setEditVisible(false);
     } catch (error) {
       console.log("EDIT PRODUCT ERROR 👉", error);
-      alert(error.message || "Failed to save changes");
+      Alert.alert("Error", error.message || "Failed to save changes");
     } finally {
       setSaving(false);
     }
@@ -167,11 +183,11 @@ export default function Home({ navigation }) {
 
   const statusStyle = (status) => {
     switch (status?.toLowerCase()) {
-      case "pending": return { dot: "#C9943A", label: "Pending" };
+      case "pending":   return { dot: "#C9943A", label: "Pending"   };
       case "confirmed": return { dot: "#4A7C6F", label: "Confirmed" };
       case "delivered": return { dot: "#3A6B3A", label: "Delivered" };
       case "cancelled": return { dot: "#8B3A3A", label: "Cancelled" };
-      default: return { dot: C.inkLight, label: status || "Pending" };
+      default:          return { dot: C.inkLight, label: status || "Pending" };
     }
   };
 
@@ -183,9 +199,8 @@ export default function Home({ navigation }) {
     );
   }
 
-  // ── PRODUCT CARD ────────────────────────────────────────────
+  // ── PRODUCT CARD ───────────────────────────────────────────
   const renderProduct = ({ item }) => {
-    // images is an array from Cloudinary; fall back gracefully
     const firstImage = Array.isArray(item.images) && item.images.length > 0
       ? item.images[0]
       : null;
@@ -194,22 +209,16 @@ export default function Home({ navigation }) {
       <View style={s.productCard}>
         <View style={s.productCardInner}>
 
-          {/* Image thumbnail */}
           {firstImage ? (
-            <Image
-              source={{ uri: firstImage }}
-              style={s.productThumb}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: firstImage }} style={s.productThumb} resizeMode="cover" />
           ) : (
             <View style={s.productThumbPlaceholder}>
               <Text style={s.productThumbPlaceholderText}>📦</Text>
             </View>
           )}
 
-          {/* Text content */}
           <View style={s.productInfo}>
-            {/* top row: name + edit */}
+            {/* top row */}
             <View style={s.productCardTop}>
               <Text style={s.productName} numberOfLines={1}>{item.name}</Text>
               <View style={s.cardActions}>
@@ -232,12 +241,17 @@ export default function Home({ navigation }) {
               </View>
             </View>
 
+            {/* category badge ── new */}
+            {item.categoryId?.name ? (
+              <Text style={s.productCategory}>{item.categoryId.name}</Text>
+            ) : null}
+
             {/* description */}
             {item.description ? (
               <Text style={s.productDesc} numberOfLines={1}>{item.description}</Text>
             ) : null}
 
-            {/* bottom row: qty + price */}
+            {/* bottom row */}
             <View style={s.productCardBottom}>
               <Text style={s.productQty}>{item.quantity} {item.unit}</Text>
               <Text style={s.productPrice}>₹{item.price}</Text>
@@ -267,7 +281,6 @@ export default function Home({ navigation }) {
             </Text>
           </View>
 
-          {/* Tab pills */}
           <View style={s.tabRow}>
             <TouchableOpacity
               style={[s.tabPill, activeTab === "store" && s.tabPillActive]}
@@ -374,8 +387,8 @@ export default function Home({ navigation }) {
                       <Text style={s.orderDate}>
                         {item.createdAt
                           ? new Date(item.createdAt).toLocaleDateString("en-IN", {
-                            day: "numeric", month: "short", year: "numeric",
-                          })
+                              day: "numeric", month: "short", year: "numeric",
+                            })
                           : ""}
                       </Text>
                       <Text style={s.orderTotal}>₹{item.totalAmount}</Text>
@@ -442,6 +455,26 @@ export default function Home({ navigation }) {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
+              {/* ── CATEGORY CHIPS in modal ── new */}
+              <Text style={s.fieldLabel}>CATEGORY</Text>
+              <View style={s.chipGrid}>
+                {categories.map((cat) => {
+                  const active = editCategoryId === cat._id;
+                  return (
+                    <TouchableOpacity
+                      key={cat._id}
+                      style={[s.chip, active && s.chipActive]}
+                      onPress={() => setEditCategoryId(cat._id)}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[s.chipText, active && s.chipTextActive]}>
+                        {cat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
               <Text style={s.fieldLabel}>PRODUCT NAME</Text>
               <TextInput
                 style={s.field}
@@ -505,8 +538,7 @@ export default function Home({ navigation }) {
               >
                 {saving
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={s.saveBtnText}>Save Changes</Text>
-                }
+                  : <Text style={s.saveBtnText}>Save Changes</Text>}
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -519,10 +551,10 @@ export default function Home({ navigation }) {
 const NAV_H = 72;
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
+  safe:      { flex: 1, backgroundColor: C.bg },
   container: { flex: 1, paddingBottom: NAV_H },
 
-  // ── HEADER ──
+  // header
   header: {
     backgroundColor: C.surfaceAlt,
     paddingHorizontal: 24,
@@ -537,298 +569,191 @@ const s = StyleSheet.create({
     alignItems: "flex-end",
     marginBottom: 20,
   },
-  wordmark: { fontSize: 14, fontWeight: "800", letterSpacing: 0.8, color: C.ink },
+  wordmark:   { fontSize: 14, fontWeight: "800", letterSpacing: 0.8, color: C.ink },
   headerMeta: { fontSize: 12, color: C.inkLight, letterSpacing: 0.5 },
 
-  cardActions: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  deleteChip: {
-    borderWidth: 1,
-    borderColor: "#F0DADA",
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: "#FDF4F4",
-  },
-  deleteChipText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#8B3A3A",
-    letterSpacing: 0.3,
-  },
   // tab pills
   tabRow: { flexDirection: "row", gap: 6, marginBottom: -1 },
   tabPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    marginRight: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingVertical: 10, paddingHorizontal: 4, marginRight: 8,
+    borderBottomWidth: 2, borderBottomColor: "transparent",
   },
-  tabPillActive: { borderBottomColor: C.ink },
-  tabPillText: { fontSize: 13, fontWeight: "600", color: C.inkLight, letterSpacing: 0.2 },
+  tabPillActive:     { borderBottomColor: C.ink },
+  tabPillText:       { fontSize: 13, fontWeight: "600", color: C.inkLight, letterSpacing: 0.2 },
   tabPillTextActive: { color: C.ink },
   tabBadge: {
-    backgroundColor: C.border,
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    minWidth: 18,
-    alignItems: "center",
+    backgroundColor: C.border, borderRadius: 10,
+    paddingHorizontal: 6, paddingVertical: 1,
+    minWidth: 18, alignItems: "center",
   },
-  tabBadgeActive: { backgroundColor: C.ink },
-  tabBadgeText: { fontSize: 10, fontWeight: "700", color: C.inkMid },
+  tabBadgeActive:     { backgroundColor: C.ink },
+  tabBadgeText:       { fontSize: 10, fontWeight: "700", color: C.inkMid },
   tabBadgeTextActive: { color: "#fff" },
 
-  // ── EMPTY ──
-  emptyWrap: { flex: 1, justifyContent: "center", alignItems: "center", padding: 40 },
-  emptyBox: { alignItems: "center" },
+  // empty
+  emptyWrap:  { flex: 1, justifyContent: "center", alignItems: "center", padding: 40 },
+  emptyBox:   { alignItems: "center" },
   emptyGlyph: { fontSize: 32, color: C.border, marginBottom: 20, letterSpacing: -2 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: C.ink, marginBottom: 8, letterSpacing: -0.3 },
-  emptyDesc: { fontSize: 13, color: C.inkMid, textAlign: "center", lineHeight: 20, marginBottom: 28 },
+  emptyDesc:  { fontSize: 13, color: C.inkMid, textAlign: "center", lineHeight: 20, marginBottom: 28 },
   emptyBtn: {
-    borderWidth: 1.5,
-    borderColor: C.ink,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+    borderWidth: 1.5, borderColor: C.ink,
+    paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8,
   },
   emptyBtnText: { fontSize: 13, fontWeight: "700", color: C.ink, letterSpacing: 0.5 },
 
-  // ── PRODUCT CARD ──
+  // product card
   list: { padding: 16, gap: 10 },
   productCard: {
-    backgroundColor: C.surfaceAlt,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: C.border,
-    overflow: "hidden",
-    shadowColor: C.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    backgroundColor: C.surfaceAlt, borderRadius: 12,
+    borderWidth: 1, borderColor: C.border, overflow: "hidden",
+    shadowColor: C.shadow, shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
-  productCardInner: {
-    flexDirection: "row",
-    alignItems: "stretch",
-  },
-
-  // thumbnail
-  productThumb: {
-    width: 88,
-    height: 88,
-    backgroundColor: C.bg,
-  },
+  productCardInner:         { flexDirection: "row", alignItems: "stretch" },
+  productThumb:             { width: 88, height: 88, backgroundColor: C.bg },
   productThumbPlaceholder: {
-    width: 88,
-    height: 88,
-    backgroundColor: C.bg,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRightWidth: 1,
-    borderRightColor: C.borderLight,
+    width: 88, height: 88, backgroundColor: C.bg,
+    alignItems: "center", justifyContent: "center",
+    borderRightWidth: 1, borderRightColor: C.borderLight,
   },
-  productThumbPlaceholderText: {
-    fontSize: 28,
-  },
-
-  // info section next to thumbnail
-  productInfo: {
-    flex: 1,
-    padding: 14,
-    justifyContent: "space-between",
-  },
+  productThumbPlaceholderText: { fontSize: 28 },
+  productInfo:    { flex: 1, padding: 14, justifyContent: "space-between" },
   productCardTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
+    flexDirection: "row", justifyContent: "space-between",
+    alignItems: "center", marginBottom: 4,
   },
   productName: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "700",
-    color: C.ink,
-    letterSpacing: -0.2,
-    marginRight: 10,
+    flex: 1, fontSize: 15, fontWeight: "700", color: C.ink,
+    letterSpacing: -0.2, marginRight: 10,
   },
+  cardActions:    { flexDirection: "row", gap: 6 },
   editChip: {
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: C.bg,
+    borderWidth: 1, borderColor: C.border, borderRadius: 6,
+    paddingHorizontal: 10, paddingVertical: 4, backgroundColor: C.bg,
   },
-  editChipText: { fontSize: 11, fontWeight: "600", color: C.inkMid, letterSpacing: 0.3 },
+  editChipText:  { fontSize: 11, fontWeight: "600", color: C.inkMid, letterSpacing: 0.3 },
+  deleteChip: {
+    borderWidth: 1, borderColor: "#F0DADA", borderRadius: 6,
+    paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "#FDF4F4",
+  },
+  deleteChipText: { fontSize: 11, fontWeight: "600", color: "#8B3A3A", letterSpacing: 0.3 },
+
+  // ← new: category label on card
+  productCategory: {
+    fontSize: 10, fontWeight: "700", color: C.inkLight,
+    letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 2,
+  },
   productDesc: { fontSize: 12, color: C.inkLight, lineHeight: 17 },
   productCardBottom: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: C.borderLight,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    marginTop: 10, paddingTop: 10,
+    borderTopWidth: 1, borderTopColor: C.borderLight,
   },
-  productQty: { fontSize: 12, color: C.inkMid, fontWeight: "500", letterSpacing: 0.2 },
+  productQty:   { fontSize: 12, color: C.inkMid, fontWeight: "500", letterSpacing: 0.2 },
   productPrice: { fontSize: 17, fontWeight: "800", color: C.ink, letterSpacing: -0.3 },
 
-  // ── ORDER CARD ──
+  // order card
   orderCard: {
-    backgroundColor: C.surfaceAlt,
-    borderRadius: 12,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: C.border,
-    shadowColor: C.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    backgroundColor: C.surfaceAlt, borderRadius: 12, padding: 18,
+    borderWidth: 1, borderColor: C.border,
+    shadowColor: C.shadow, shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
   orderCardTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
+    flexDirection: "row", justifyContent: "space-between",
+    alignItems: "center", marginBottom: 4,
   },
-  orderId: { fontSize: 11, fontWeight: "800", color: C.inkLight, letterSpacing: 1.5 },
-  statusRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  orderId:     { fontSize: 11, fontWeight: "800", color: C.inkLight, letterSpacing: 1.5 },
+  statusRow:   { flexDirection: "row", alignItems: "center", gap: 5 },
+  statusDot:   { width: 6, height: 6, borderRadius: 3 },
   statusLabel: { fontSize: 12, fontWeight: "600", color: C.inkMid },
-  orderBuyer: { fontSize: 15, fontWeight: "700", color: C.ink, marginBottom: 12, letterSpacing: -0.2 },
+  orderBuyer:  { fontSize: 15, fontWeight: "700", color: C.ink, marginBottom: 12, letterSpacing: -0.2 },
   orderItemsWrap: {
-    backgroundColor: C.bg,
-    borderRadius: 8,
-    padding: 12,
-    gap: 5,
-    marginBottom: 12,
+    backgroundColor: C.bg, borderRadius: 8,
+    padding: 12, gap: 5, marginBottom: 12,
   },
   orderItemRow: { fontSize: 13, color: C.inkMid, fontWeight: "500" },
   orderItemQty: { color: C.inkLight },
   orderFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: C.borderLight,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingTop: 12, borderTopWidth: 1, borderTopColor: C.borderLight,
   },
-  orderDate: { fontSize: 11, color: C.inkLight, letterSpacing: 0.3 },
+  orderDate:  { fontSize: 11, color: C.inkLight, letterSpacing: 0.3 },
   orderTotal: { fontSize: 17, fontWeight: "800", color: C.ink, letterSpacing: -0.3 },
 
-  // ── BOTTOM NAV ──
+  // bottom nav
   nav: {
-    position: "absolute",
-    bottom: 0, left: 0, right: 0,
-    backgroundColor: C.surfaceAlt,
-    borderTopWidth: 1,
-    borderTopColor: C.border,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    paddingTop: 10,
-    paddingHorizontal: 20,
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    backgroundColor: C.surfaceAlt, borderTopWidth: 1, borderTopColor: C.border,
+    flexDirection: "row", alignItems: "center",
+    justifyContent: "space-around", paddingTop: 10, paddingHorizontal: 20,
   },
-  navItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 6 },
-  navIcon: { fontSize: 16, color: C.inkMid, marginBottom: 1 },
+  navItem:       { flex: 1, alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 6 },
+  navIcon:       { fontSize: 16, color: C.inkMid, marginBottom: 1 },
   navIconActive: { color: C.ink },
-  navLabel: { fontSize: 11, color: C.inkLight, fontWeight: "500", letterSpacing: 0.3 },
-  navLabelActive: { color: C.ink, fontWeight: "700" },
+  navLabel:      { fontSize: 11, color: C.inkLight, fontWeight: "500", letterSpacing: 0.3 },
+  navLabelActive:{ color: C.ink, fontWeight: "700" },
   navAdd: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: C.ink,
-    justifyContent: "center",
-    alignItems: "center",
+    width: 50, height: 50, borderRadius: 25,
+    backgroundColor: C.ink, justifyContent: "center", alignItems: "center",
     marginBottom: 10,
-    shadowColor: C.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowColor: C.shadow, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25, shadowRadius: 10, elevation: 6,
   },
   navAddIcon: { color: "#fff", fontSize: 26, lineHeight: 30, fontWeight: "300" },
 
-  // ── EDIT MODAL ──
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(26,25,22,0.4)",
-  },
+  // edit modal
+  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(26,25,22,0.4)" },
   modalSheet: {
     backgroundColor: C.surfaceAlt,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
     maxHeight: "92%",
   },
   modalHandle: {
-    width: 36,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: C.border,
-    alignSelf: "center",
-    marginTop: 12,
-    marginBottom: 4,
+    width: 36, height: 3, borderRadius: 2, backgroundColor: C.border,
+    alignSelf: "center", marginTop: 12, marginBottom: 4,
   },
   modalHead: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: C.borderLight,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 24, paddingVertical: 16,
+    borderBottomWidth: 1, borderBottomColor: C.borderLight,
   },
   modalTitle: { fontSize: 16, fontWeight: "800", color: C.ink, letterSpacing: -0.2 },
   modalClose: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: C.bg,
-    borderWidth: 1,
-    borderColor: C.border,
-    justifyContent: "center",
-    alignItems: "center",
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: C.bg, borderWidth: 1, borderColor: C.border,
+    justifyContent: "center", alignItems: "center",
   },
   modalCloseText: { fontSize: 11, fontWeight: "700", color: C.inkMid },
-  modalBody: { padding: 24, paddingBottom: 44 },
+  modalBody:      { padding: 24, paddingBottom: 44 },
 
   fieldLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: C.inkLight,
-    letterSpacing: 1.2,
-    marginBottom: 7,
-    marginTop: 4,
+    fontSize: 10, fontWeight: "700", color: C.inkLight,
+    letterSpacing: 1.2, marginBottom: 7, marginTop: 4,
   },
   field: {
-    backgroundColor: C.bg,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    marginBottom: 16,
-    fontSize: 14,
-    color: C.ink,
+    backgroundColor: C.bg, borderWidth: 1, borderColor: C.border,
+    borderRadius: 8, paddingHorizontal: 14, paddingVertical: 13,
+    marginBottom: 16, fontSize: 14, color: C.ink,
   },
   fieldArea: { height: 76, textAlignVertical: "top" },
-  fieldRow: { flexDirection: "row" },
+  fieldRow:  { flexDirection: "row" },
   saveBtn: {
-    backgroundColor: C.ink,
-    paddingVertical: 15,
-    borderRadius: 10,
-    marginTop: 4,
-    alignItems: "center",
+    backgroundColor: C.ink, paddingVertical: 15,
+    borderRadius: 10, marginTop: 4, alignItems: "center",
   },
   saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14, letterSpacing: 0.5 },
+
+  // ← new: category chips in edit modal
+  chipGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
+  chip: {
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 16, borderWidth: 1.5, borderColor: C.border,
+    backgroundColor: C.bg,
+  },
+  chipActive:     { backgroundColor: C.ink, borderColor: C.ink },
+  chipText:       { fontSize: 12, fontWeight: "600", color: C.inkMid },
+  chipTextActive: { color: "#fff" },
 });
