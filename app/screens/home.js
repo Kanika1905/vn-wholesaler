@@ -13,6 +13,7 @@ import {
   ScrollView,
   Image,
   StatusBar,
+  Alert,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

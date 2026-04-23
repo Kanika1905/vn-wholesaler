@@ -147,7 +147,7 @@ export default function AddProduct({ navigation }) {
       const formData = buildFormData();
 
       // Use fetch directly (not apiRequest) because we need multipart headers
-      const BASE_URL = "http://192.168.0.100:5000/api"; // 🔁 replace with your actual API base URL
+      const BASE_URL = "http://192.168.0.103:5000/api"; // 🔁 replace with your actual API base URL
       const response = await fetch(`${BASE_URL}/wholesaler/products`, {
         method: "POST",
         headers: {
