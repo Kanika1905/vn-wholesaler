@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons"; // ← add this
 import { apiRequest } from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -51,13 +52,12 @@ export default function Home({ navigation }) {
   const [editPrice, setEditPrice] = useState("");
   const [editQuantity, setEditQuantity] = useState("");
   const [editUnit, setEditUnit] = useState("");
-  const [editCategoryId, setEditCategoryId] = useState(null);   // ← new
+  const [editCategoryId, setEditCategoryId] = useState(null);
   const [saving, setSaving] = useState(false);
 
   // ── categories ──────────────────────────────────────────
-  const [categories, setCategories] = useState([]);             // ← new
+  const [categories, setCategories] = useState([]);
 
-  // fetch categories once on mount
   useEffect(() => {
     const loadCategories = async () => {
       try {
@@ -91,8 +91,7 @@ export default function Home({ navigation }) {
         const ordersRes = await apiRequest("/wholesaler/orders", "GET", null, token);
         if (Array.isArray(ordersRes?.orders)) setOrders(ordersRes.orders);
         else if (Array.isArray(ordersRes)) setOrders(ordersRes);
-      } catch (_) { }
-
+      } catch (_) {}
     } catch (error) {
       console.log("HOME FETCH ERROR 👉", error);
     } finally {
@@ -113,7 +112,7 @@ export default function Home({ navigation }) {
     setEditPrice(String(product.price || ""));
     setEditQuantity(String(product.quantity || ""));
     setEditUnit(product.unit || "");
-    setEditCategoryId(product.categoryId?._id || null);         // ← new
+    setEditCategoryId(product.categoryId?._id || null);
     setEditVisible(true);
   };
 
@@ -125,7 +124,10 @@ export default function Home({ navigation }) {
     try {
       setSaving(true);
       const token = await AsyncStorage.getItem("token");
-      if (!token) { Alert.alert("Session expired", "Please login again."); return; }
+      if (!token) {
+        Alert.alert("Session expired", "Please login again.");
+        return;
+      }
 
       const res = await apiRequest(
         `/wholesaler/products/${editingProduct._id}`,
@@ -136,7 +138,7 @@ export default function Home({ navigation }) {
           price: Number(editPrice),
           quantity: Number(editQuantity),
           unit: editUnit.trim(),
-          categoryId: editCategoryId,                          // ← new
+          categoryId: editCategoryId,
         },
         token
       );
@@ -147,7 +149,9 @@ export default function Home({ navigation }) {
         setEditVisible(false);
         return;
       }
-      setProducts((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
+      setProducts((prev) =>
+        prev.map((p) => (p._id === updated._id ? updated : p))
+      );
       setEditVisible(false);
     } catch (error) {
       console.log("EDIT PRODUCT ERROR 👉", error);
@@ -170,7 +174,12 @@ export default function Home({ navigation }) {
             try {
               const token = await AsyncStorage.getItem("token");
               if (!token) return;
-              await apiRequest(`/wholesaler/products/${productId}`, "DELETE", null, token);
+              await apiRequest(
+                `/wholesaler/products/${productId}`,
+                "DELETE",
+                null,
+                token
+              );
               setProducts((prev) => prev.filter((p) => p._id !== productId));
             } catch (error) {
               console.log("DELETE ERROR 👉", error);
@@ -184,11 +193,16 @@ export default function Home({ navigation }) {
 
   const statusStyle = (status) => {
     switch (status?.toLowerCase()) {
-      case "pending": return { dot: "#C9943A", label: "Pending" };
-      case "confirmed": return { dot: "#4A7C6F", label: "Confirmed" };
-      case "delivered": return { dot: "#3A6B3A", label: "Delivered" };
-      case "cancelled": return { dot: "#8B3A3A", label: "Cancelled" };
-      default: return { dot: C.inkLight, label: status || "Pending" };
+      case "pending":
+        return { dot: "#C9943A", label: "Pending" };
+      case "confirmed":
+        return { dot: "#4A7C6F", label: "Confirmed" };
+      case "delivered":
+        return { dot: "#3A6B3A", label: "Delivered" };
+      case "cancelled":
+        return { dot: "#8B3A3A", label: "Cancelled" };
+      default:
+        return { dot: C.inkLight, label: status || "Pending" };
     }
   };
 
@@ -202,49 +216,63 @@ export default function Home({ navigation }) {
 
   // ── PRODUCT CARD ───────────────────────────────────────────
   const renderProduct = ({ item }) => {
-    const firstImage = Array.isArray(item.images) && item.images.length > 0
-      ? item.images[0]
-      : null;
+    const firstImage =
+      Array.isArray(item.images) && item.images.length > 0
+        ? item.images[0]
+        : null;
 
     return (
       <View style={s.card}>
+        {/* Image with top-right action buttons */}
         <View style={s.imgWrap}>
           {firstImage ? (
-            <Image source={{ uri: firstImage }} style={s.productImg} resizeMode="cover" />
+            <Image
+              source={{ uri: firstImage }}
+              style={s.productImg}
+              resizeMode="cover"
+            />
           ) : (
             <View style={s.imgPlaceholder}>
               <Text style={s.imgPlaceholderText}>📦</Text>
             </View>
           )}
-          {/* Edit / Delete overlaid at bottom */}
+
+          {/* ── Edit / Delete — top-right corner of image ── */}
           <View style={s.cardOverlayActions}>
             <TouchableOpacity
               style={s.overlayBtn}
               onPress={() => openEdit(item)}
-              activeOpacity={0.8}
+              activeOpacity={0.75}
             >
-              <Text style={s.overlayBtnText}>✏</Text>
+              <Ionicons name="pencil-outline" size={11} color={C.inkMid} />
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.overlayBtn, s.overlayBtnDelete]}
               onPress={() => handleDeleteProduct(item._id)}
-              activeOpacity={0.8}
+              activeOpacity={0.75}
             >
-              <Text style={s.overlayBtnText}>🗑</Text>
+              <Ionicons name="trash-outline" size={11} color="#B94040" />
             </TouchableOpacity>
           </View>
         </View>
 
+        {/* Info */}
         <View style={s.cardInfo}>
           <View style={s.priceRow}>
             <View style={s.priceBadge}>
               <Text style={s.priceText}>₹{item.price}</Text>
             </View>
           </View>
-          <Text style={s.productName} numberOfLines={2}>{item.name}</Text>
-          <Text style={s.qtyText} numberOfLines={1}>{item.quantity} {item.unit}</Text>
+          <Text style={s.productName} numberOfLines={2}>
+            {item.name}
+          </Text>
+          <Text style={s.qtyText} numberOfLines={1}>
+            {item.quantity} {item.unit}
+          </Text>
           {item.categoryId?.name ? (
-            <Text style={s.productCategory} numberOfLines={1}>{item.categoryId.name}</Text>
+            <Text style={s.productCategory} numberOfLines={1}>
+              {item.categoryId.name}
+            </Text>
           ) : null}
         </View>
       </View>
@@ -275,7 +303,12 @@ export default function Home({ navigation }) {
               onPress={() => setActiveTab("store")}
               activeOpacity={0.75}
             >
-              <Text style={[s.tabPillText, activeTab === "store" && s.tabPillTextActive]}>
+              <Text
+                style={[
+                  s.tabPillText,
+                  activeTab === "store" && s.tabPillTextActive,
+                ]}
+              >
                 Products
               </Text>
             </TouchableOpacity>
@@ -285,12 +318,27 @@ export default function Home({ navigation }) {
               onPress={() => setActiveTab("orders")}
               activeOpacity={0.75}
             >
-              <Text style={[s.tabPillText, activeTab === "orders" && s.tabPillTextActive]}>
+              <Text
+                style={[
+                  s.tabPillText,
+                  activeTab === "orders" && s.tabPillTextActive,
+                ]}
+              >
                 Orders
               </Text>
               {orders.length > 0 && (
-                <View style={[s.tabBadge, activeTab === "orders" && s.tabBadgeActive]}>
-                  <Text style={[s.tabBadgeText, activeTab === "orders" && s.tabBadgeTextActive]}>
+                <View
+                  style={[
+                    s.tabBadge,
+                    activeTab === "orders" && s.tabBadgeActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      s.tabBadgeText,
+                      activeTab === "orders" && s.tabBadgeTextActive,
+                    ]}
+                  >
                     {orders.length}
                   </Text>
                 </View>
@@ -300,8 +348,8 @@ export default function Home({ navigation }) {
         </View>
 
         {/* ── PRODUCTS TAB ── */}
-        {activeTab === "store" && (
-          products.length === 0 ? (
+        {activeTab === "store" &&
+          (products.length === 0 ? (
             <View style={s.emptyWrap}>
               <View style={s.emptyBox}>
                 <Text style={s.emptyGlyph}>—</Text>
@@ -332,12 +380,11 @@ export default function Home({ navigation }) {
               showsVerticalScrollIndicator={false}
               renderItem={renderProduct}
             />
-          )
-        )}
+          ))}
 
         {/* ── ORDERS TAB ── */}
-        {activeTab === "orders" && (
-          orders.length === 0 ? (
+        {activeTab === "orders" &&
+          (orders.length === 0 ? (
             <View style={s.emptyWrap}>
               <View style={s.emptyBox}>
                 <Text style={s.emptyGlyph}>—</Text>
@@ -356,60 +403,90 @@ export default function Home({ navigation }) {
                 return (
                   <View style={s.orderCard}>
                     <View style={s.orderCardTop}>
-                      <Text style={s.orderId}>#{item._id?.slice(-6).toUpperCase()}</Text>
+                      <Text style={s.orderId}>
+                        #{item._id?.slice(-6).toUpperCase()}
+                      </Text>
                       <View style={s.statusRow}>
-                        <View style={[s.statusDot, { backgroundColor: st.dot }]} />
+                        <View
+                          style={[
+                            s.statusDot,
+                            { backgroundColor: st.dot },
+                          ]}
+                        />
                         <Text style={s.statusLabel}>{st.label}</Text>
                       </View>
                     </View>
-                    <Text style={s.orderBuyer}>{item.vendor?.businessName || "Vendor"}</Text>
+                    <Text style={s.orderBuyer}>
+                      {item.vendor?.businessName || "Vendor"}
+                    </Text>
                     {item.product && (
                       <View style={s.orderItemsWrap}>
                         <Text style={s.orderItemRow}>
                           {item.product.name}
-                          <Text style={s.orderItemQty}>  ×{item.quantity}</Text>
+                          <Text style={s.orderItemQty}>
+                            {"  "}×{item.quantity}
+                          </Text>
                         </Text>
                       </View>
                     )}
                     <View style={s.orderFooter}>
                       <Text style={s.orderDate}>
                         {item.createdAt
-                          ? new Date(item.createdAt).toLocaleDateString("en-IN", {
-                            day: "numeric", month: "short", year: "numeric",
-                          })
+                          ? new Date(item.createdAt).toLocaleDateString(
+                              "en-IN",
+                              {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              }
+                            )
                           : ""}
                       </Text>
-                      <Text style={s.orderTotal}>₹{item.totalAmount || item.product?.price * item.quantity}</Text>
+                      <Text style={s.orderTotal}>
+                        ₹
+                        {item.totalAmount ||
+                          item.product?.price * item.quantity}
+                      </Text>
                     </View>
                   </View>
                 );
               }}
             />
-          )
-        )}
+          ))}
       </View>
 
       {/* ── BOTTOM NAV ── */}
       <View style={[s.nav, { paddingBottom: insets.bottom + 10 }]}>
+        {/* Home */}
         <TouchableOpacity style={s.navItem} activeOpacity={0.7}>
-          <Text style={[s.navIcon, s.navIconActive]}>⌂</Text>
+          <Ionicons
+            name="home"
+            size={22}
+            color={C.ink}
+          />
           <Text style={[s.navLabel, s.navLabelActive]}>Home</Text>
         </TouchableOpacity>
 
+        {/* Add product FAB */}
         <TouchableOpacity
           style={s.navAdd}
           onPress={() => navigation.navigate("addProduct")}
           activeOpacity={0.85}
         >
-          <Text style={s.navAddIcon}>+</Text>
+          <Ionicons name="add" size={28} color="#fff" />
         </TouchableOpacity>
 
+        {/* Profile */}
         <TouchableOpacity
           style={s.navItem}
           onPress={() => navigation.navigate("profile")}
           activeOpacity={0.7}
         >
-          <Text style={s.navIcon}>◎</Text>
+          <Ionicons
+            name="person-circle-outline"
+            size={22}
+            color={C.inkMid}
+          />
           <Text style={s.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -434,7 +511,7 @@ export default function Home({ navigation }) {
                 onPress={() => setEditVisible(false)}
                 activeOpacity={0.7}
               >
-                <Text style={s.modalCloseText}>✕</Text>
+                <Ionicons name="close" size={16} color={C.inkMid} />
               </TouchableOpacity>
             </View>
 
@@ -443,7 +520,7 @@ export default function Home({ navigation }) {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              {/* ── CATEGORY CHIPS in modal ── new */}
+              {/* Category chips */}
               <Text style={s.fieldLabel}>CATEGORY</Text>
               <View style={s.chipGrid}>
                 {categories.map((cat) => {
@@ -524,9 +601,11 @@ export default function Home({ navigation }) {
                 activeOpacity={0.85}
                 disabled={saving}
               >
-                {saving
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={s.saveBtnText}>Save Changes</Text>}
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={s.saveBtnText}>Save Changes</Text>
+                )}
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -557,47 +636,93 @@ const s = StyleSheet.create({
     alignItems: "flex-end",
     marginBottom: 20,
   },
-  wordmark: { fontSize: 14, fontWeight: "800", letterSpacing: 0.8, color: C.ink },
+  wordmark: {
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    color: C.ink,
+  },
   headerMeta: { fontSize: 12, color: C.inkLight, letterSpacing: 0.5 },
 
   // tab pills
   tabRow: { flexDirection: "row", gap: 6, marginBottom: -1 },
   tabPill: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingVertical: 10, paddingHorizontal: 4, marginRight: 8,
-    borderBottomWidth: 2, borderBottomColor: "transparent",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    marginRight: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
   },
   tabPillActive: { borderBottomColor: C.ink },
-  tabPillText: { fontSize: 13, fontWeight: "600", color: C.inkLight, letterSpacing: 0.2 },
+  tabPillText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: C.inkLight,
+    letterSpacing: 0.2,
+  },
   tabPillTextActive: { color: C.ink },
   tabBadge: {
-    backgroundColor: C.border, borderRadius: 10,
-    paddingHorizontal: 6, paddingVertical: 1,
-    minWidth: 18, alignItems: "center",
+    backgroundColor: C.border,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    minWidth: 18,
+    alignItems: "center",
   },
   tabBadgeActive: { backgroundColor: C.ink },
   tabBadgeText: { fontSize: 10, fontWeight: "700", color: C.inkMid },
   tabBadgeTextActive: { color: "#fff" },
 
   // empty
-  emptyWrap: { flex: 1, justifyContent: "center", alignItems: "center", padding: 40 },
-  emptyBox: { alignItems: "center" },
-  emptyGlyph: { fontSize: 32, color: C.border, marginBottom: 20, letterSpacing: -2 },
-  emptyTitle: { fontSize: 18, fontWeight: "700", color: C.ink, marginBottom: 8, letterSpacing: -0.3 },
-  emptyDesc: { fontSize: 13, color: C.inkMid, textAlign: "center", lineHeight: 20, marginBottom: 28 },
-  emptyBtn: {
-    borderWidth: 1.5, borderColor: C.ink,
-    paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8,
+  emptyWrap: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
   },
-  emptyBtnText: { fontSize: 13, fontWeight: "700", color: C.ink, letterSpacing: 0.5 },
+  emptyBox: { alignItems: "center" },
+  emptyGlyph: {
+    fontSize: 32,
+    color: C.border,
+    marginBottom: 20,
+    letterSpacing: -2,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: C.ink,
+    marginBottom: 8,
+    letterSpacing: -0.3,
+  },
+  emptyDesc: {
+    fontSize: 13,
+    color: C.inkMid,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 28,
+  },
+  emptyBtn: {
+    borderWidth: 1.5,
+    borderColor: C.ink,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  emptyBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: C.ink,
+    letterSpacing: 0.5,
+  },
 
-  // product card
-  // list grid
   // grid
   list: { paddingHorizontal: 10, paddingTop: 10, paddingBottom: 100 },
   row: { justifyContent: "space-between", marginBottom: 10 },
 
-  // card
+  // card — size unchanged
   card: {
     width: CARD_SIZE,
     backgroundColor: C.surfaceAlt,
@@ -614,140 +739,262 @@ const s = StyleSheet.create({
   },
   productImg: { width: "100%", height: "100%" },
   imgPlaceholder: {
-    flex: 1, alignItems: "center", justifyContent: "center",
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: C.bg,
   },
   imgPlaceholderText: { fontSize: 28 },
 
-  // edit/delete overlaid at bottom of image
-  cardOverlayActions: {
-    position: "absolute", bottom: 4, left: 0, right: 0,
-    flexDirection: "row", justifyContent: "center", gap: 6,
-  },
-  overlayBtn: {
-    width: 26, height: 26, borderRadius: 6,
-    backgroundColor: "rgba(255,255,255,0.88)",
-    borderWidth: 1, borderColor: C.borderLight,
-    alignItems: "center", justifyContent: "center",
-  },
-  overlayBtnDelete: { borderColor: "#F0DADA" },
-  overlayBtnText: { fontSize: 11 },
-
   // info
   cardInfo: { padding: 6 },
-  priceRow: { flexDirection: "row", alignItems: "center", marginBottom: 3 },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 3,
+  },
   priceBadge: {
-    backgroundColor: "#2E7D32", borderRadius: 5,
-    paddingHorizontal: 6, paddingVertical: 2,
+    backgroundColor: "#2E7D32",
+    borderRadius: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
   priceText: { color: "#fff", fontSize: 11, fontWeight: "700" },
   productName: {
-    fontSize: 11, fontWeight: "600", color: C.ink,
-    marginBottom: 1, lineHeight: 15,
+    fontSize: 11,
+    fontWeight: "600",
+    color: C.ink,
+    marginBottom: 1,
+    lineHeight: 15,
   },
   qtyText: { fontSize: 10, color: C.inkLight },
   productCategory: {
-    fontSize: 9, fontWeight: "700", color: C.inkLight,
-    letterSpacing: 0.6, textTransform: "uppercase", marginTop: 2,
+    fontSize: 9,
+    fontWeight: "700",
+    color: C.inkLight,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    marginTop: 2,
+  },
+
+  // ── edit / delete — top-right overlay on image ──
+  cardOverlayActions: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    flexDirection: "column",
+    gap: 4,
+  },
+  overlayBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: "rgba(255,255,255,0.90)",
+    borderWidth: 1,
+    borderColor: C.borderLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  overlayBtnDelete: {
+    borderColor: "#F0DADA",
+    backgroundColor: "rgba(255,245,245,0.92)",
   },
 
   // order card
   orderCard: {
-    backgroundColor: C.surfaceAlt, borderRadius: 12, padding: 18,
-    borderWidth: 1, borderColor: C.border,
-    shadowColor: C.shadow, shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+    backgroundColor: C.surfaceAlt,
+    borderRadius: 12,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: C.border,
+    shadowColor: C.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   orderCardTop: {
-    flexDirection: "row", justifyContent: "space-between",
-    alignItems: "center", marginBottom: 4,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
   },
-  orderId: { fontSize: 11, fontWeight: "800", color: C.inkLight, letterSpacing: 1.5 },
+  orderId: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: C.inkLight,
+    letterSpacing: 1.5,
+  },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusLabel: { fontSize: 12, fontWeight: "600", color: C.inkMid },
-  orderBuyer: { fontSize: 15, fontWeight: "700", color: C.ink, marginBottom: 12, letterSpacing: -0.2 },
+  orderBuyer: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: C.ink,
+    marginBottom: 12,
+    letterSpacing: -0.2,
+  },
   orderItemsWrap: {
-    backgroundColor: C.bg, borderRadius: 8,
-    padding: 12, gap: 5, marginBottom: 12,
+    backgroundColor: C.bg,
+    borderRadius: 8,
+    padding: 12,
+    gap: 5,
+    marginBottom: 12,
   },
   orderItemRow: { fontSize: 13, color: C.inkMid, fontWeight: "500" },
   orderItemQty: { color: C.inkLight },
   orderFooter: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingTop: 12, borderTopWidth: 1, borderTopColor: C.borderLight,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: C.borderLight,
   },
   orderDate: { fontSize: 11, color: C.inkLight, letterSpacing: 0.3 },
-  orderTotal: { fontSize: 17, fontWeight: "800", color: C.ink, letterSpacing: -0.3 },
+  orderTotal: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: C.ink,
+    letterSpacing: -0.3,
+  },
 
   // bottom nav
   nav: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    backgroundColor: C.surfaceAlt, borderTopWidth: 1, borderTopColor: C.border,
-    flexDirection: "row", alignItems: "center",
-    justifyContent: "space-around", paddingTop: 10, paddingHorizontal: 20,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: C.surfaceAlt,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    paddingTop: 10,
+    paddingHorizontal: 20,
   },
-  navItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 6 },
-  navIcon: { fontSize: 16, color: C.inkMid, marginBottom: 1 },
-  navIconActive: { color: C.ink },
-  navLabel: { fontSize: 11, color: C.inkLight, fontWeight: "500", letterSpacing: 0.3 },
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    paddingTop: 6,
+  },
+  navLabel: {
+    fontSize: 11,
+    color: C.inkLight,
+    fontWeight: "500",
+    letterSpacing: 0.3,
+  },
   navLabelActive: { color: C.ink, fontWeight: "700" },
   navAdd: {
-    width: 50, height: 50, borderRadius: 25,
-    backgroundColor: C.ink, justifyContent: "center", alignItems: "center",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: C.ink,
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 10,
-    shadowColor: C.shadow, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25, shadowRadius: 10, elevation: 6,
+    shadowColor: C.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  navAddIcon: { color: "#fff", fontSize: 26, lineHeight: 30, fontWeight: "300" },
 
   // edit modal
-  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(26,25,22,0.4)" },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(26,25,22,0.4)",
+  },
   modalSheet: {
     backgroundColor: C.surfaceAlt,
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     maxHeight: "92%",
   },
   modalHandle: {
-    width: 36, height: 3, borderRadius: 2, backgroundColor: C.border,
-    alignSelf: "center", marginTop: 12, marginBottom: 4,
+    width: 36,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: C.border,
+    alignSelf: "center",
+    marginTop: 12,
+    marginBottom: 4,
   },
   modalHead: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 24, paddingVertical: 16,
-    borderBottomWidth: 1, borderBottomColor: C.borderLight,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: C.borderLight,
   },
-  modalTitle: { fontSize: 16, fontWeight: "800", color: C.ink, letterSpacing: -0.2 },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: C.ink,
+    letterSpacing: -0.2,
+  },
   modalClose: {
-    width: 30, height: 30, borderRadius: 15,
-    backgroundColor: C.bg, borderWidth: 1, borderColor: C.border,
-    justifyContent: "center", alignItems: "center",
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: C.bg,
+    borderWidth: 1,
+    borderColor: C.border,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  modalCloseText: { fontSize: 11, fontWeight: "700", color: C.inkMid },
   modalBody: { padding: 24, paddingBottom: 44 },
 
   fieldLabel: {
-    fontSize: 10, fontWeight: "700", color: C.inkLight,
-    letterSpacing: 1.2, marginBottom: 7, marginTop: 4,
+    fontSize: 10,
+    fontWeight: "700",
+    color: C.inkLight,
+    letterSpacing: 1.2,
+    marginBottom: 7,
+    marginTop: 4,
   },
   field: {
-    backgroundColor: C.bg, borderWidth: 1, borderColor: C.border,
-    borderRadius: 8, paddingHorizontal: 14, paddingVertical: 13,
-    marginBottom: 16, fontSize: 14, color: C.ink,
+    backgroundColor: C.bg,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    marginBottom: 16,
+    fontSize: 14,
+    color: C.ink,
   },
   fieldArea: { height: 76, textAlignVertical: "top" },
   fieldRow: { flexDirection: "row" },
   saveBtn: {
-    backgroundColor: C.ink, paddingVertical: 15,
-    borderRadius: 10, marginTop: 4, alignItems: "center",
+    backgroundColor: C.ink,
+    paddingVertical: 15,
+    borderRadius: 10,
+    marginTop: 4,
+    alignItems: "center",
   },
-  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14, letterSpacing: 0.5 },
+  saveBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 14,
+    letterSpacing: 0.5,
+  },
 
-  // ← new: category chips in edit modal
+  // category chips
   chipGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
   chip: {
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 16, borderWidth: 1.5, borderColor: C.border,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: C.border,
     backgroundColor: C.bg,
   },
   chipActive: { backgroundColor: C.ink, borderColor: C.ink },
