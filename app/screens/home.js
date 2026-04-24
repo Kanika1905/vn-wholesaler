@@ -89,7 +89,8 @@ export default function Home({ navigation }) {
 
       try {
         const ordersRes = await apiRequest("/wholesaler/orders", "GET", null, token);
-        if (Array.isArray(ordersRes)) setOrders(ordersRes);
+        if (Array.isArray(ordersRes?.orders)) setOrders(ordersRes.orders);
+        else if (Array.isArray(ordersRes)) setOrders(ordersRes);
       } catch (_) { }
 
     } catch (error) {
@@ -361,15 +362,13 @@ export default function Home({ navigation }) {
                         <Text style={s.statusLabel}>{st.label}</Text>
                       </View>
                     </View>
-                    <Text style={s.orderBuyer}>{item.buyerName || "Buyer"}</Text>
-                    {Array.isArray(item.items) && item.items.length > 0 && (
+                    <Text style={s.orderBuyer}>{item.vendor?.businessName || "Vendor"}</Text>
+                    {item.product && (
                       <View style={s.orderItemsWrap}>
-                        {item.items.map((p, idx) => (
-                          <Text key={idx} style={s.orderItemRow}>
-                            {p.name}
-                            <Text style={s.orderItemQty}>  ×{p.quantity}</Text>
-                          </Text>
-                        ))}
+                        <Text style={s.orderItemRow}>
+                          {item.product.name}
+                          <Text style={s.orderItemQty}>  ×{item.quantity}</Text>
+                        </Text>
                       </View>
                     )}
                     <View style={s.orderFooter}>
@@ -380,7 +379,7 @@ export default function Home({ navigation }) {
                           })
                           : ""}
                       </Text>
-                      <Text style={s.orderTotal}>₹{item.totalAmount}</Text>
+                      <Text style={s.orderTotal}>₹{item.totalAmount || item.product?.price * item.quantity}</Text>
                     </View>
                   </View>
                 );
