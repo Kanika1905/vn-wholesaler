@@ -36,23 +36,23 @@ const C = {
 export default function Home({ navigation }) {
   const insets = useSafeAreaInsets();
 
-  const [activeTab, setActiveTab]               = useState("store");
+  const [activeTab, setActiveTab] = useState("store");
   const [isProfileCompleted, setIsProfileCompleted] = useState(false);
-  const [businessName, setBusinessName]         = useState("");
-  const [products, setProducts]                 = useState([]);
-  const [orders, setOrders]                     = useState([]);
-  const [loading, setLoading]                   = useState(true);
+  const [businessName, setBusinessName] = useState("");
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // ── edit modal ──────────────────────────────────────────
-  const [editVisible, setEditVisible]       = useState(false);
+  const [editVisible, setEditVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [editName, setEditName]             = useState("");
+  const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
-  const [editPrice, setEditPrice]           = useState("");
-  const [editQuantity, setEditQuantity]     = useState("");
-  const [editUnit, setEditUnit]             = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editQuantity, setEditQuantity] = useState("");
+  const [editUnit, setEditUnit] = useState("");
   const [editCategoryId, setEditCategoryId] = useState(null);   // ← new
-  const [saving, setSaving]                 = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // ── categories ──────────────────────────────────────────
   const [categories, setCategories] = useState([]);             // ← new
@@ -90,7 +90,7 @@ export default function Home({ navigation }) {
       try {
         const ordersRes = await apiRequest("/wholesaler/orders", "GET", null, token);
         if (Array.isArray(ordersRes)) setOrders(ordersRes);
-      } catch (_) {}
+      } catch (_) { }
 
     } catch (error) {
       console.log("HOME FETCH ERROR 👉", error);
@@ -130,12 +130,12 @@ export default function Home({ navigation }) {
         `/wholesaler/products/${editingProduct._id}`,
         "PUT",
         {
-          name:        editName.trim(),
+          name: editName.trim(),
           description: editDescription.trim(),
-          price:       Number(editPrice),
-          quantity:    Number(editQuantity),
-          unit:        editUnit.trim(),
-          categoryId:  editCategoryId,                          // ← new
+          price: Number(editPrice),
+          quantity: Number(editQuantity),
+          unit: editUnit.trim(),
+          categoryId: editCategoryId,                          // ← new
         },
         token
       );
@@ -183,11 +183,11 @@ export default function Home({ navigation }) {
 
   const statusStyle = (status) => {
     switch (status?.toLowerCase()) {
-      case "pending":   return { dot: "#C9943A", label: "Pending"   };
+      case "pending": return { dot: "#C9943A", label: "Pending" };
       case "confirmed": return { dot: "#4A7C6F", label: "Confirmed" };
       case "delivered": return { dot: "#3A6B3A", label: "Delivered" };
       case "cancelled": return { dot: "#8B3A3A", label: "Cancelled" };
-      default:          return { dot: C.inkLight, label: status || "Pending" };
+      default: return { dot: C.inkLight, label: status || "Pending" };
     }
   };
 
@@ -206,58 +206,45 @@ export default function Home({ navigation }) {
       : null;
 
     return (
-      <View style={s.productCard}>
-        <View style={s.productCardInner}>
-
+      <View style={s.card}>
+        <View style={s.imgWrap}>
           {firstImage ? (
-            <Image source={{ uri: firstImage }} style={s.productThumb} resizeMode="cover" />
+            <Image source={{ uri: firstImage }} style={s.productImg} resizeMode="cover" />
           ) : (
-            <View style={s.productThumbPlaceholder}>
-              <Text style={s.productThumbPlaceholderText}>📦</Text>
+            <View style={s.imgPlaceholder}>
+              <Text style={s.imgPlaceholderText}>📦</Text>
             </View>
           )}
+          {/* Edit / Delete overlaid at bottom */}
+          <View style={s.cardOverlayActions}>
+            <TouchableOpacity
+              style={s.overlayBtn}
+              onPress={() => openEdit(item)}
+              activeOpacity={0.8}
+            >
+              <Text style={s.overlayBtnText}>✏</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.overlayBtn, s.overlayBtnDelete]}
+              onPress={() => handleDeleteProduct(item._id)}
+              activeOpacity={0.8}
+            >
+              <Text style={s.overlayBtnText}>🗑</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-          <View style={s.productInfo}>
-            {/* top row */}
-            <View style={s.productCardTop}>
-              <Text style={s.productName} numberOfLines={1}>{item.name}</Text>
-              <View style={s.cardActions}>
-                <TouchableOpacity
-                  style={s.editChip}
-                  onPress={() => openEdit(item)}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                >
-                  <Text style={s.editChipText}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={s.deleteChip}
-                  onPress={() => handleDeleteProduct(item._id)}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                >
-                  <Text style={s.deleteChipText}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* category badge ── new */}
-            {item.categoryId?.name ? (
-              <Text style={s.productCategory}>{item.categoryId.name}</Text>
-            ) : null}
-
-            {/* description */}
-            {item.description ? (
-              <Text style={s.productDesc} numberOfLines={1}>{item.description}</Text>
-            ) : null}
-
-            {/* bottom row */}
-            <View style={s.productCardBottom}>
-              <Text style={s.productQty}>{item.quantity} {item.unit}</Text>
-              <Text style={s.productPrice}>₹{item.price}</Text>
+        <View style={s.cardInfo}>
+          <View style={s.priceRow}>
+            <View style={s.priceBadge}>
+              <Text style={s.priceText}>₹{item.price}</Text>
             </View>
           </View>
-
+          <Text style={s.productName} numberOfLines={2}>{item.name}</Text>
+          <Text style={s.qtyText} numberOfLines={1}>{item.quantity} {item.unit}</Text>
+          {item.categoryId?.name ? (
+            <Text style={s.productCategory} numberOfLines={1}>{item.categoryId.name}</Text>
+          ) : null}
         </View>
       </View>
     );
@@ -338,6 +325,8 @@ export default function Home({ navigation }) {
             <FlatList
               data={products}
               keyExtractor={(item) => item._id}
+              numColumns={3}
+              columnWrapperStyle={s.row}
               contentContainerStyle={s.list}
               showsVerticalScrollIndicator={false}
               renderItem={renderProduct}
@@ -387,8 +376,8 @@ export default function Home({ navigation }) {
                       <Text style={s.orderDate}>
                         {item.createdAt
                           ? new Date(item.createdAt).toLocaleDateString("en-IN", {
-                              day: "numeric", month: "short", year: "numeric",
-                            })
+                            day: "numeric", month: "short", year: "numeric",
+                          })
                           : ""}
                       </Text>
                       <Text style={s.orderTotal}>₹{item.totalAmount}</Text>
@@ -549,9 +538,9 @@ export default function Home({ navigation }) {
 }
 
 const NAV_H = 72;
-
+const CARD_SIZE = "31%";
 const s = StyleSheet.create({
-  safe:      { flex: 1, backgroundColor: C.bg },
+  safe: { flex: 1, backgroundColor: C.bg },
   container: { flex: 1, paddingBottom: NAV_H },
 
   // header
@@ -569,7 +558,7 @@ const s = StyleSheet.create({
     alignItems: "flex-end",
     marginBottom: 20,
   },
-  wordmark:   { fontSize: 14, fontWeight: "800", letterSpacing: 0.8, color: C.ink },
+  wordmark: { fontSize: 14, fontWeight: "800", letterSpacing: 0.8, color: C.ink },
   headerMeta: { fontSize: 12, color: C.inkLight, letterSpacing: 0.5 },
 
   // tab pills
@@ -579,24 +568,24 @@ const s = StyleSheet.create({
     paddingVertical: 10, paddingHorizontal: 4, marginRight: 8,
     borderBottomWidth: 2, borderBottomColor: "transparent",
   },
-  tabPillActive:     { borderBottomColor: C.ink },
-  tabPillText:       { fontSize: 13, fontWeight: "600", color: C.inkLight, letterSpacing: 0.2 },
+  tabPillActive: { borderBottomColor: C.ink },
+  tabPillText: { fontSize: 13, fontWeight: "600", color: C.inkLight, letterSpacing: 0.2 },
   tabPillTextActive: { color: C.ink },
   tabBadge: {
     backgroundColor: C.border, borderRadius: 10,
     paddingHorizontal: 6, paddingVertical: 1,
     minWidth: 18, alignItems: "center",
   },
-  tabBadgeActive:     { backgroundColor: C.ink },
-  tabBadgeText:       { fontSize: 10, fontWeight: "700", color: C.inkMid },
+  tabBadgeActive: { backgroundColor: C.ink },
+  tabBadgeText: { fontSize: 10, fontWeight: "700", color: C.inkMid },
   tabBadgeTextActive: { color: "#fff" },
 
   // empty
-  emptyWrap:  { flex: 1, justifyContent: "center", alignItems: "center", padding: 40 },
-  emptyBox:   { alignItems: "center" },
+  emptyWrap: { flex: 1, justifyContent: "center", alignItems: "center", padding: 40 },
+  emptyBox: { alignItems: "center" },
   emptyGlyph: { fontSize: 32, color: C.border, marginBottom: 20, letterSpacing: -2 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: C.ink, marginBottom: 8, letterSpacing: -0.3 },
-  emptyDesc:  { fontSize: 13, color: C.inkMid, textAlign: "center", lineHeight: 20, marginBottom: 28 },
+  emptyDesc: { fontSize: 13, color: C.inkMid, textAlign: "center", lineHeight: 20, marginBottom: 28 },
   emptyBtn: {
     borderWidth: 1.5, borderColor: C.ink,
     paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8,
@@ -604,55 +593,64 @@ const s = StyleSheet.create({
   emptyBtnText: { fontSize: 13, fontWeight: "700", color: C.ink, letterSpacing: 0.5 },
 
   // product card
-  list: { padding: 16, gap: 10 },
-  productCard: {
-    backgroundColor: C.surfaceAlt, borderRadius: 12,
-    borderWidth: 1, borderColor: C.border, overflow: "hidden",
-    shadowColor: C.shadow, shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
-  },
-  productCardInner:         { flexDirection: "row", alignItems: "stretch" },
-  productThumb:             { width: 88, height: 88, backgroundColor: C.bg },
-  productThumbPlaceholder: {
-    width: 88, height: 88, backgroundColor: C.bg,
-    alignItems: "center", justifyContent: "center",
-    borderRightWidth: 1, borderRightColor: C.borderLight,
-  },
-  productThumbPlaceholderText: { fontSize: 28 },
-  productInfo:    { flex: 1, padding: 14, justifyContent: "space-between" },
-  productCardTop: {
-    flexDirection: "row", justifyContent: "space-between",
-    alignItems: "center", marginBottom: 4,
-  },
-  productName: {
-    flex: 1, fontSize: 15, fontWeight: "700", color: C.ink,
-    letterSpacing: -0.2, marginRight: 10,
-  },
-  cardActions:    { flexDirection: "row", gap: 6 },
-  editChip: {
-    borderWidth: 1, borderColor: C.border, borderRadius: 6,
-    paddingHorizontal: 10, paddingVertical: 4, backgroundColor: C.bg,
-  },
-  editChipText:  { fontSize: 11, fontWeight: "600", color: C.inkMid, letterSpacing: 0.3 },
-  deleteChip: {
-    borderWidth: 1, borderColor: "#F0DADA", borderRadius: 6,
-    paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "#FDF4F4",
-  },
-  deleteChipText: { fontSize: 11, fontWeight: "600", color: "#8B3A3A", letterSpacing: 0.3 },
+  // list grid
+  // grid
+  list: { paddingHorizontal: 10, paddingTop: 10, paddingBottom: 100 },
+  row: { justifyContent: "space-between", marginBottom: 10 },
 
-  // ← new: category label on card
+  // card
+  card: {
+    width: CARD_SIZE,
+    backgroundColor: C.surfaceAlt,
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 0.5,
+    borderColor: C.border,
+  },
+  imgWrap: {
+    width: "100%",
+    aspectRatio: 1,
+    backgroundColor: C.bg,
+    position: "relative",
+  },
+  productImg: { width: "100%", height: "100%" },
+  imgPlaceholder: {
+    flex: 1, alignItems: "center", justifyContent: "center",
+    backgroundColor: C.bg,
+  },
+  imgPlaceholderText: { fontSize: 28 },
+
+  // edit/delete overlaid at bottom of image
+  cardOverlayActions: {
+    position: "absolute", bottom: 4, left: 0, right: 0,
+    flexDirection: "row", justifyContent: "center", gap: 6,
+  },
+  overlayBtn: {
+    width: 26, height: 26, borderRadius: 6,
+    backgroundColor: "rgba(255,255,255,0.88)",
+    borderWidth: 1, borderColor: C.borderLight,
+    alignItems: "center", justifyContent: "center",
+  },
+  overlayBtnDelete: { borderColor: "#F0DADA" },
+  overlayBtnText: { fontSize: 11 },
+
+  // info
+  cardInfo: { padding: 6 },
+  priceRow: { flexDirection: "row", alignItems: "center", marginBottom: 3 },
+  priceBadge: {
+    backgroundColor: "#2E7D32", borderRadius: 5,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  priceText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  productName: {
+    fontSize: 11, fontWeight: "600", color: C.ink,
+    marginBottom: 1, lineHeight: 15,
+  },
+  qtyText: { fontSize: 10, color: C.inkLight },
   productCategory: {
-    fontSize: 10, fontWeight: "700", color: C.inkLight,
-    letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 2,
+    fontSize: 9, fontWeight: "700", color: C.inkLight,
+    letterSpacing: 0.6, textTransform: "uppercase", marginTop: 2,
   },
-  productDesc: { fontSize: 12, color: C.inkLight, lineHeight: 17 },
-  productCardBottom: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    marginTop: 10, paddingTop: 10,
-    borderTopWidth: 1, borderTopColor: C.borderLight,
-  },
-  productQty:   { fontSize: 12, color: C.inkMid, fontWeight: "500", letterSpacing: 0.2 },
-  productPrice: { fontSize: 17, fontWeight: "800", color: C.ink, letterSpacing: -0.3 },
 
   // order card
   orderCard: {
@@ -665,11 +663,11 @@ const s = StyleSheet.create({
     flexDirection: "row", justifyContent: "space-between",
     alignItems: "center", marginBottom: 4,
   },
-  orderId:     { fontSize: 11, fontWeight: "800", color: C.inkLight, letterSpacing: 1.5 },
-  statusRow:   { flexDirection: "row", alignItems: "center", gap: 5 },
-  statusDot:   { width: 6, height: 6, borderRadius: 3 },
+  orderId: { fontSize: 11, fontWeight: "800", color: C.inkLight, letterSpacing: 1.5 },
+  statusRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusLabel: { fontSize: 12, fontWeight: "600", color: C.inkMid },
-  orderBuyer:  { fontSize: 15, fontWeight: "700", color: C.ink, marginBottom: 12, letterSpacing: -0.2 },
+  orderBuyer: { fontSize: 15, fontWeight: "700", color: C.ink, marginBottom: 12, letterSpacing: -0.2 },
   orderItemsWrap: {
     backgroundColor: C.bg, borderRadius: 8,
     padding: 12, gap: 5, marginBottom: 12,
@@ -680,7 +678,7 @@ const s = StyleSheet.create({
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingTop: 12, borderTopWidth: 1, borderTopColor: C.borderLight,
   },
-  orderDate:  { fontSize: 11, color: C.inkLight, letterSpacing: 0.3 },
+  orderDate: { fontSize: 11, color: C.inkLight, letterSpacing: 0.3 },
   orderTotal: { fontSize: 17, fontWeight: "800", color: C.ink, letterSpacing: -0.3 },
 
   // bottom nav
@@ -690,11 +688,11 @@ const s = StyleSheet.create({
     flexDirection: "row", alignItems: "center",
     justifyContent: "space-around", paddingTop: 10, paddingHorizontal: 20,
   },
-  navItem:       { flex: 1, alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 6 },
-  navIcon:       { fontSize: 16, color: C.inkMid, marginBottom: 1 },
+  navItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 6 },
+  navIcon: { fontSize: 16, color: C.inkMid, marginBottom: 1 },
   navIconActive: { color: C.ink },
-  navLabel:      { fontSize: 11, color: C.inkLight, fontWeight: "500", letterSpacing: 0.3 },
-  navLabelActive:{ color: C.ink, fontWeight: "700" },
+  navLabel: { fontSize: 11, color: C.inkLight, fontWeight: "500", letterSpacing: 0.3 },
+  navLabelActive: { color: C.ink, fontWeight: "700" },
   navAdd: {
     width: 50, height: 50, borderRadius: 25,
     backgroundColor: C.ink, justifyContent: "center", alignItems: "center",
@@ -727,7 +725,7 @@ const s = StyleSheet.create({
     justifyContent: "center", alignItems: "center",
   },
   modalCloseText: { fontSize: 11, fontWeight: "700", color: C.inkMid },
-  modalBody:      { padding: 24, paddingBottom: 44 },
+  modalBody: { padding: 24, paddingBottom: 44 },
 
   fieldLabel: {
     fontSize: 10, fontWeight: "700", color: C.inkLight,
@@ -739,7 +737,7 @@ const s = StyleSheet.create({
     marginBottom: 16, fontSize: 14, color: C.ink,
   },
   fieldArea: { height: 76, textAlignVertical: "top" },
-  fieldRow:  { flexDirection: "row" },
+  fieldRow: { flexDirection: "row" },
   saveBtn: {
     backgroundColor: C.ink, paddingVertical: 15,
     borderRadius: 10, marginTop: 4, alignItems: "center",
@@ -753,7 +751,7 @@ const s = StyleSheet.create({
     borderRadius: 16, borderWidth: 1.5, borderColor: C.border,
     backgroundColor: C.bg,
   },
-  chipActive:     { backgroundColor: C.ink, borderColor: C.ink },
-  chipText:       { fontSize: 12, fontWeight: "600", color: C.inkMid },
+  chipActive: { backgroundColor: C.ink, borderColor: C.ink },
+  chipText: { fontSize: 12, fontWeight: "600", color: C.inkMid },
   chipTextActive: { color: "#fff" },
 });

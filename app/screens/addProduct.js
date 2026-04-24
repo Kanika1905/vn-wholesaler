@@ -37,7 +37,8 @@ export default function AddProduct({ navigation }) {
     const fetchCategories = async () => {
       try {
         const res = await apiRequest("/categories", "GET");
-        if (Array.isArray(res)) setCategories(res);
+        const cats = res?.categories || res;
+        if (Array.isArray(cats)) setCategories(cats);
       } catch (err) {
         console.log("Category fetch error:", err);
       } finally {
@@ -258,37 +259,63 @@ export default function AddProduct({ navigation }) {
               <Modal
                 visible={dropdownOpen}
                 transparent
-                animationType="fade"
+                animationType="slide"
                 onRequestClose={() => setDropdownOpen(false)}
               >
-                <TouchableOpacity
-                  style={styles.modalOverlay}
-                  activeOpacity={1}
-                  onPress={() => setDropdownOpen(false)}
-                >
+                {/* Backdrop: separate pressable view, not wrapping the sheet */}
+                <View style={styles.modalOverlay}>
+                  <TouchableOpacity
+                    style={styles.modalBackdrop}
+                    activeOpacity={1}
+                    onPress={() => setDropdownOpen(false)}
+                  />
+
                   <View style={styles.modalSheet}>
+                    <View style={styles.modalHandle} />
                     <Text style={styles.modalTitle}>Select Category</Text>
-                    {categories.map((cat) => {
-                      const active = selectedCategory?._id === cat._id;
-                      return (
-                        <TouchableOpacity
-                          key={cat._id}
-                          style={[styles.modalOption, active && styles.modalOptionActive]}
-                          onPress={() => {
-                            setSelectedCategory(cat);
-                            setDropdownOpen(false);
-                          }}
-                          activeOpacity={0.75}
-                        >
-                          <Text style={[styles.modalOptionText, active && styles.modalOptionTextActive]}>
-                            {cat.name}
-                          </Text>
-                          {active && <Text style={styles.checkmark}>✓</Text>}
-                        </TouchableOpacity>
-                      );
-                    })}
+
+                    <ScrollView
+                      showsVerticalScrollIndicator={false}
+                      contentContainerStyle={{ paddingBottom: 40 }}
+                      keyboardShouldPersistTaps="handled"
+                    >
+                      {Object.entries(
+                        categories.reduce((acc, cat) => {
+                          const g = cat.group || "Other";
+                          if (!acc[g]) acc[g] = [];
+                          acc[g].push(cat);
+                          return acc;
+                        }, {})
+                      ).map(([group, cats]) => (
+                        <View key={group}>
+                          <Text style={styles.groupHeader}>{group}</Text>
+                          {cats.map((cat) => {
+                            const active = selectedCategory?._id === cat._id;
+                            return (
+                              <TouchableOpacity
+                                key={cat._id}
+                                style={[styles.modalOption, active && styles.modalOptionActive]}
+                                onPress={() => {
+                                  setSelectedCategory(cat);
+                                  setDropdownOpen(false);
+                                }}
+                                activeOpacity={0.75}
+                              >
+                                <View style={styles.modalOptionLeft}>
+                                  <Text style={styles.catEmoji}>{cat.emoji || "📦"}</Text>
+                                  <Text style={[styles.modalOptionText, active && styles.modalOptionTextActive]}>
+                                    {cat.name}
+                                  </Text>
+                                </View>
+                                {active && <Text style={styles.checkmark}>✓</Text>}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      ))}
+                    </ScrollView>
                   </View>
-                </TouchableOpacity>
+                </View>
               </Modal>
             </>
           )}
@@ -492,4 +519,38 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 0.2 },
+
+  // Replace old modalOverlay and modalSheet
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  modalSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    maxHeight: "75%",   // ← so it doesn't fill whole screen
+  },
+  modalHandle: {
+    width: 36, height: 3, borderRadius: 2,
+    backgroundColor: "#DDD", alignSelf: "center",
+    marginBottom: 16,
+  },
+  groupHeader: {
+    fontSize: 11, fontWeight: "800", color: "#999",
+    letterSpacing: 1, textTransform: "uppercase",
+    paddingTop: 16, paddingBottom: 6,
+    borderBottomWidth: 1, borderBottomColor: "#F0F0EE",
+    marginBottom: 4,
+  },
+  modalOptionLeft: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+  },
+  catEmoji: { fontSize: 20 },
 });
