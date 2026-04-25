@@ -155,7 +155,7 @@ export default function AddProduct({ navigation }) {
       if (!token) { Alert.alert("Session expired", "Please login again."); return; }
 
       const formData = buildFormData();
-      const BASE_URL = "http://192.168.0.102:5000/api";
+      const BASE_URL = "http://10.171.227.5:5000/api";
       const response = await fetch(`${BASE_URL}/wholesaler/products`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
