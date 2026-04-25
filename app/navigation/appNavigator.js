@@ -5,6 +5,7 @@ import Login from "../screens/login";
 import Home from "../screens/home";
 import Profile from "../screens/profile";
 import AddProduct from "../screens/addProduct";
+import Orders from "../screens/orders";
 
 const Stack = createNativeStackNavigator();
 
@@ -18,6 +19,7 @@ export default function AppNavigator() {
       <Stack.Screen name="home" component={Home} />
       <Stack.Screen name="profile" component={Profile} />
       <Stack.Screen name="addProduct" component={AddProduct} />
+      <Stack.Screen name="orders" component={Orders} />
     </Stack.Navigator>
   );
 }
